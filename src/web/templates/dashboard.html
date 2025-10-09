@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Tech News Digest{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">📊 Dashboard</h1>
+
+<!-- Stats Cards -->
+<div class="grid grid-4">
+    <div class="card stat-card">
+        <div class="stat-value" id="total-videos">0</div>
+        <div class="stat-label">Total Videos</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" id="total-news">0</div>
+        <div class="stat-label">News Processed</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" id="total-cost">$0.00</div>
+        <div class="stat-label">Total Cost</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" id="success-rate">0%</div>
+        <div class="stat-label">Success Rate</div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="grid grid-2">
+    <!-- Recent Videos -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Recent Videos</h2>
+            <a href="/videos" class="btn btn-primary">View All</a>
+        </div>
+        <div class="card-body">
+            <div id="recent-videos">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading videos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Status -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Schedule Status</h2>
+            <a href="/settings" class="btn btn-secondary">Configure</a>
+        </div>
+        <div class="card-body">
+            <div id="schedule-status">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading schedule...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cost Breakdown -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Cost Breakdown (Last 7 Days)</h2>
+    </div>
+    <div class="card-body">
+        <div id="cost-breakdown">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading cost data...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generation History -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Generation History</h2>
+    </div>
+    <div class="card-body">
+        <div id="history-table">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading history...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadDashboard() {
+    try {
+        // Load stats
+        const stats = await API.Analytics.getStats();
+        document.getElementById('total-videos').textContent = stats.total_videos;
+        document.getElementById('total-news').textContent = stats.total_news_processed;
+        document.getElementById('total-cost').textContent = utils.formatCost(stats.total_cost);
+        document.getElementById('success-rate').textContent = Math.round(stats.success_rate * 100) + '%';
+
+        // Load recent videos
+        const videos = await API.Videos.listVideos(5);
+        const recentVideosHtml = videos.length > 0
+            ? videos.map(v => `
+                <div class="news-item" style="margin-bottom: 1rem;">
+                    <div class="news-content">
+                        <div class="news-title">${v.title}</div>
+                        <div class="news-meta">
+                            <span class="badge badge-${v.status === 'completed' ? 'success' : v.status === 'failed' ? 'failed' : 'pending'}">
+                                ${v.status}
+                            </span>
+                            <span>${utils.formatDate(v.created_at)}</span>
+                            ${v.duration ? `<span>${utils.formatDuration(v.duration)}</span>` : ''}
+                            <span>${utils.formatCost(v.total_cost)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('')
+            : '<p style="color: var(--text-secondary);">No videos yet</p>';
+        document.getElementById('recent-videos').innerHTML = recentVideosHtml;
+
+        // Load schedule
+        const schedule = await API.Schedule.getSchedule();
+        const scheduleHtml = `
+            <div style="line-height: 2;">
+                <p><strong>Status:</strong> <span class="badge badge-${schedule.enabled ? 'success' : 'failed'}">${schedule.enabled ? 'Enabled' : 'Disabled'}</span></p>
+                <p><strong>Time:</strong> ${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')} (${schedule.timezone})</p>
+                <p><strong>News Limit:</strong> ${schedule.news_limit} articles</p>
+                <p><strong>YouTube Upload:</strong> ${schedule.enable_youtube_upload ? 'Yes' : 'No'}</p>
+                ${schedule.next_run ? `<p><strong>Next Run:</strong> ${schedule.next_run}</p>` : ''}
+            </div>
+        `;
+        document.getElementById('schedule-status').innerHTML = scheduleHtml;
+
+        // Load cost breakdown
+        const costs = await API.Analytics.getCosts(7);
+        const costHtml = `
+            <div class="grid grid-3">
+                <div class="stat-card">
+                    <div class="stat-value">${utils.formatCost(costs.breakdown.gpt)}</div>
+                    <div class="stat-label">GPT-4o</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${utils.formatCost(costs.breakdown.dalle)}</div>
+                    <div class="stat-label">DALL-E 3</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${utils.formatCost(costs.breakdown.tts)}</div>
+                    <div class="stat-label">TTS</div>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary);">
+                Average: ${utils.formatCost(costs.average_daily_cost)}/day over ${costs.period.days} days
+            </p>
+        `;
+        document.getElementById('cost-breakdown').innerHTML = costHtml;
+
+        // Load history
+        const history = await API.Analytics.getHistory(10);
+        const historyHtml = history.history.length > 0
+            ? `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Video ID</th>
+                            <th>Status</th>
+                            <th>News</th>
+                            <th>Duration</th>
+                            <th>Cost</th>
+                            <th>YouTube</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${history.history.map(h => `
+                            <tr>
+                                <td>${h.date}</td>
+                                <td><code>${h.video_id}</code></td>
+                                <td><span class="badge badge-${h.status === 'completed' ? 'success' : 'failed'}">${h.status}</span></td>
+                                <td>${h.news_count}</td>
+                                <td>${utils.formatDuration(h.duration)}</td>
+                                <td>${utils.formatCost(h.cost)}</td>
+                                <td>${h.youtube_url ? '✅' : '❌'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `
+            : '<p style="color: var(--text-secondary);">No history yet</p>';
+        document.getElementById('history-table').innerHTML = historyHtml;
+
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        utils.showToast('Error loading dashboard data', 'error');
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadDashboard);
+
+// Auto-refresh every 30 seconds
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

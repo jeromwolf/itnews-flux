@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Videos - Tech News Digest{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">🎬 Videos</h1>
+
+<!-- Controls -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body">
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label class="form-label">Filter by Status</label>
+                <select id="status-filter" class="form-select" onchange="loadVideos()">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="generating">Generating</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="uploaded">Uploaded</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label class="form-label">Limit</label>
+                <input type="number" id="limit" class="form-input" value="10" min="1" max="50" onchange="loadVideos()">
+            </div>
+            <button onclick="loadVideos()" class="btn btn-primary">🔄 Refresh</button>
+            <a href="/news" class="btn btn-success">➕ Create New Video</a>
+        </div>
+    </div>
+</div>
+
+<!-- Videos List -->
+<div id="videos-list">
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading videos...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadVideos() {
+    try {
+        const status = document.getElementById('status-filter').value || null;
+        const limit = parseInt(document.getElementById('limit').value);
+
+        document.getElementById('videos-list').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading videos...</p>
+            </div>
+        `;
+
+        const videos = await API.Videos.listVideos(limit, status);
+
+        if (videos.length === 0) {
+            document.getElementById('videos-list').innerHTML = `
+                <div class="card">
+                    <div class="card-body" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <p style="font-size: 3rem; margin-bottom: 1rem;">📹</p>
+                        <p style="font-size: 1.2rem;">No videos yet</p>
+                        <p style="margin-top: 1rem;">
+                            <a href="/news" class="btn btn-primary">Create Your First Video</a>
+                        </p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const videosHtml = videos.map(video => {
+            const statusBadgeClass =
+                video.status === 'completed' || video.status === 'uploaded' ? 'badge-success' :
+                video.status === 'failed' ? 'badge-failed' :
+                'badge-pending';
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title" style="font-size: 1.1rem;">${video.title}</h3>
+                        <span class="badge ${statusBadgeClass}">${video.status}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid grid-2">
+                            <!-- Video Info -->
+                            <div>
+                                <p><strong>ID:</strong> <code>${video.id}</code></p>
+                                <p><strong>Created:</strong> ${utils.formatDate(video.created_at)}</p>
+                                ${video.duration ? `<p><strong>Duration:</strong> ${utils.formatDuration(video.duration)}</p>` : ''}
+                                <p><strong>Cost:</strong> ${utils.formatCost(video.total_cost)}</p>
+                                ${video.youtube_url ? `<p><strong>YouTube:</strong> <a href="${video.youtube_url}" target="_blank">Watch →</a></p>` : ''}
+                                ${video.error ? `<p style="color: var(--danger-color);"><strong>Error:</strong> ${video.error}</p>` : ''}
+                            </div>
+
+                            <!-- Segments -->
+                            <div>
+                                ${video.segments.length > 0 ? `
+                                    <p><strong>Segments (${video.segments.length}):</strong></p>
+                                    <ul style="margin-left: 1.5rem; color: var(--text-secondary);">
+                                        ${video.segments.map(s => `
+                                            <li style="margin-bottom: 0.5rem;">
+                                                ${s.title}<br>
+                                                <small>${utils.formatDuration(s.duration)} - ${utils.formatCost(s.cost)}</small>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                ` : '<p style="color: var(--text-secondary);">No segments yet</p>'}
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar (for generating status) -->
+                        ${video.status === 'generating' || video.status === 'uploading' ? `
+                            <div class="progress" style="margin-top: 1rem;">
+                                <div class="progress-bar" style="width: ${video.status === 'generating' ? '50%' : '75%'};"></div>
+                            </div>
+                            <p style="text-align: center; color: var(--text-secondary); margin-top: 0.5rem;">
+                                ${video.status === 'generating' ? 'Generating video...' : 'Uploading to YouTube...'}
+                            </p>
+                        ` : ''}
+
+                        <!-- Actions -->
+                        <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                            ${video.video_path ? `<button onclick="downloadVideo('${video.video_path}')" class="btn btn-secondary">📥 Download</button>` : ''}
+                            <button onclick="deleteVideo('${video.id}')" class="btn btn-danger">🗑️ Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('videos-list').innerHTML = videosHtml;
+
+    } catch (error) {
+        console.error('Error loading videos:', error);
+        document.getElementById('videos-list').innerHTML = `
+            <div class="card">
+                <div class="card-body" style="text-align: center; padding: 2rem; color: var(--danger-color);">
+                    <p>Error loading videos: ${error.message}</p>
+                </div>
+            </div>
+        `;
+        utils.showToast('Error loading videos', 'error');
+    }
+}
+
+function downloadVideo(videoPath) {
+    // In a real implementation, this would trigger a download
+    utils.showToast('Video path: ' + videoPath, 'info');
+}
+
+async function deleteVideo(videoId) {
+    if (!confirm(`Are you sure you want to delete video ${videoId}?`)) {
+        return;
+    }
+
+    try {
+        await API.Videos.deleteVideo(videoId);
+        utils.showToast('Video deleted successfully', 'success');
+        loadVideos();
+    } catch (error) {
+        console.error('Error deleting video:', error);
+        utils.showToast('Error deleting video: ' + error.message, 'error');
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadVideos);
+
+// Auto-refresh every 10 seconds if there are pending/generating videos
+setInterval(() => {
+    const statusFilter = document.getElementById('status-filter').value;
+    if (statusFilter === 'pending' || statusFilter === 'generating' || statusFilter === '') {
+        loadVideos();
+    }
+}, 10000);
+</script>
+{% endblock %}

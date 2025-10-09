@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Tech News Digest{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">⚙️ Settings</h1>
+
+<!-- Schedule Configuration -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h2 class="card-title">Schedule Configuration</h2>
+        <span id="schedule-status" class="badge badge-pending">Loading...</span>
+    </div>
+    <div class="card-body">
+        <form id="schedule-form">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="enabled" style="margin-right: 0.5rem;">
+                        Enable Automatic Generation
+                    </label>
+                </div>
+                <div></div>
+
+                <div class="form-group">
+                    <label class="form-label" for="hour">Hour (0-23)</label>
+                    <input type="number" id="hour" class="form-input" min="0" max="23" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="minute">Minute (0-59)</label>
+                    <input type="number" id="minute" class="form-input" min="0" max="59" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="timezone">Timezone</label>
+                    <select id="timezone" class="form-select" required>
+                        <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+                        <option value="America/New_York">America/New_York (EST)</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                        <option value="Europe/London">Europe/London (GMT)</option>
+                        <option value="UTC">UTC</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="news-limit">News Articles per Video</label>
+                    <input type="number" id="news-limit" class="form-input" min="1" max="10" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="youtube-upload" style="margin-right: 0.5rem;">
+                        Auto-upload to YouTube
+                    </label>
+                </div>
+            </div>
+
+            <div id="next-run-info" style="padding: 1rem; background: #f8fafc; border-radius: 6px; margin: 1rem 0; display: none;">
+                <strong>Next scheduled run:</strong> <span id="next-run-time"></span>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" onclick="triggerNow()" class="btn btn-secondary">▶️ Run Now</button>
+                <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- System Information -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">System Information</h2>
+    </div>
+    <div class="card-body">
+        <div class="grid grid-2">
+            <div>
+                <p><strong>API Version:</strong> 1.0.0</p>
+                <p><strong>API Docs:</strong> <a href="/api/docs" target="_blank">OpenAPI Swagger →</a></p>
+                <p><strong>ReDoc:</strong> <a href="/api/redoc" target="_blank">ReDoc Documentation →</a></p>
+            </div>
+            <div>
+                <p><strong>Status:</strong> <span class="badge badge-success">Healthy</span></p>
+                <p><strong>Health Check:</strong> <a href="/health" target="_blank">/health →</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadSchedule() {
+    try {
+        const schedule = await API.Schedule.getSchedule();
+
+        // Update status badge
+        const statusBadge = document.getElementById('schedule-status');
+        statusBadge.className = `badge badge-${schedule.enabled ? 'success' : 'pending'}`;
+        statusBadge.textContent = schedule.enabled ? 'Enabled' : 'Disabled';
+
+        // Populate form
+        document.getElementById('enabled').checked = schedule.enabled;
+        document.getElementById('hour').value = schedule.hour;
+        document.getElementById('minute').value = schedule.minute;
+        document.getElementById('timezone').value = schedule.timezone;
+        document.getElementById('news-limit').value = schedule.news_limit;
+        document.getElementById('youtube-upload').checked = schedule.enable_youtube_upload;
+
+        // Show next run time
+        if (schedule.next_run && schedule.enabled) {
+            document.getElementById('next-run-time').textContent = schedule.next_run;
+            document.getElementById('next-run-info').style.display = 'block';
+        } else {
+            document.getElementById('next-run-info').style.display = 'none';
+        }
+
+    } catch (error) {
+        console.error('Error loading schedule:', error);
+        utils.showToast('Error loading schedule', 'error');
+    }
+}
+
+async function saveSchedule(event) {
+    event.preventDefault();
+
+    const config = {
+        enabled: document.getElementById('enabled').checked,
+        hour: parseInt(document.getElementById('hour').value),
+        minute: parseInt(document.getElementById('minute').value),
+        timezone: document.getElementById('timezone').value,
+        news_limit: parseInt(document.getElementById('news-limit').value),
+        enable_youtube_upload: document.getElementById('youtube-upload').checked,
+    };
+
+    try {
+        await API.Schedule.updateSchedule(config);
+        utils.showToast('Schedule updated successfully', 'success');
+        loadSchedule(); // Reload to show updated next run time
+    } catch (error) {
+        console.error('Error updating schedule:', error);
+        utils.showToast('Error updating schedule: ' + error.message, 'error');
+    }
+}
+
+async function triggerNow() {
+    if (!confirm('This will start video generation immediately. Continue?')) {
+        return;
+    }
+
+    try {
+        const result = await API.Schedule.triggerNow();
+        utils.showToast('Video generation triggered successfully', 'success');
+
+        // Redirect to videos page after 2 seconds
+        setTimeout(() => {
+            window.location.href = '/videos';
+        }, 2000);
+    } catch (error) {
+        console.error('Error triggering video generation:', error);
+        utils.showToast('Error triggering generation: ' + error.message, 'error');
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadSchedule();
+    document.getElementById('schedule-form').addEventListener('submit', saveSchedule);
+});
+</script>
+{% endblock %}
