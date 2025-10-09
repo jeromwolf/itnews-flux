@@ -86,7 +86,11 @@ class NewsCategory(str, Enum):
 class NewsSource(str, Enum):
     """News source types."""
 
-    # IT/Tech sources
+    # IT/Tech sources (Korean)
+    ETNEWS = "etnews"
+    ZDNET_KR = "zdnet_kr"
+
+    # IT/Tech sources (English)
     TECHCRUNCH = "techcrunch"
     THE_VERGE = "theverge"
     ARS_TECHNICA = "arstechnica"
@@ -107,6 +111,8 @@ class NewsSource(str, Enum):
     def display_name(self) -> str:
         """Get display name for the source."""
         names = {
+            self.ETNEWS: "전자신문",
+            self.ZDNET_KR: "ZDNet Korea",
             self.TECHCRUNCH: "TechCrunch",
             self.THE_VERGE: "The Verge",
             self.ARS_TECHNICA: "Ars Technica",
@@ -125,6 +131,8 @@ class NewsSource(str, Enum):
     def rss_url(self) -> Optional[str]:
         """Get RSS feed URL for the source."""
         urls = {
+            self.ETNEWS: "https://www.etnews.com/rss/S1N1.xml",
+            self.ZDNET_KR: "https://www.zdnet.co.kr/rss/allNews.xml",
             self.TECHCRUNCH: "https://techcrunch.com/feed/",
             self.THE_VERGE: "https://www.theverge.com/rss/index.xml",
             self.ARS_TECHNICA: "https://feeds.arstechnica.com/arstechnica/index",
@@ -141,6 +149,8 @@ class NewsSource(str, Enum):
     def is_it_tech_source(self) -> bool:
         """Check if source is IT/Tech focused."""
         return self in [
+            self.ETNEWS,
+            self.ZDNET_KR,
             self.TECHCRUNCH,
             self.THE_VERGE,
             self.ARS_TECHNICA,
