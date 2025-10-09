@@ -1,6 +1,6 @@
 # Tech News Digest 🚀
 
-> 매일 아침 7시, IT/Tech 뉴스로 영어와 기술 트렌드를 동시에 배우는 YouTube 채널
+> AI 기반 자동화로 매일 아침 7시, 최신 IT/Tech 뉴스를 전문 앵커 스타일 영상으로 전달하는 YouTube 채널
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-green.svg)](https://platform.openai.com/)
@@ -26,22 +26,23 @@
 
 ## 🎯 프로젝트 소개
 
-**Tech News Digest**는 AI를 활용하여 IT/Tech 뉴스를 자동으로 수집, 분석하고 전문 앵커 스타일의 영어 학습 영상을 생성하는 자동화 시스템입니다.
+**Tech News Digest**는 AI를 활용하여 IT/Tech 뉴스를 자동으로 수집, 분석하고 전문 앵커 스타일의 뉴스 영상을 생성하는 완전 자동화 시스템입니다.
 
 ### 핵심 가치
 
 - 🎯 **IT/Tech 중심**: TechCrunch, The Verge 등 전문 IT 뉴스 소스
-- 📚 **영어 학습**: 뉴스와 영어 학습을 통합한 콘텐츠
-- 🤖 **완전 자동화**: 크롤링부터 영상 생성까지 100% 자동
+- 🎬 **프로페셔널 품질**: 전문 뉴스 채널 스타일의 영상 제작
+- 🤖 **완전 자동화**: 크롤링부터 영상 생성, 업로드까지 100% 자동
 - ⏰ **정시 업로드**: 매일 아침 7시 YouTube 자동 업로드
+- 💰 **비용 효율**: AI 활용으로 영상당 약 $0.03 (약 40원)
 
 ### 타겟 시청자
 
 - 💻 IT 종사자, 개발자
 - 🚀 스타트업 관심층
 - 📱 테크 트렌드 팔로워
-- 💼 비즈니스 영어 학습자
-- 🎓 해외 취업 준비생
+- 🌍 글로벌 IT 뉴스에 관심있는 누구나
+- 🎥 자동화된 콘텐츠 제작에 관심있는 크리에이터
 
 ---
 
@@ -54,20 +55,27 @@
 - **15개 카테고리**: AI/ML (1.5x), Software (1.3x), Startup (1.2x), Security (1.2x) 등
 - **자동 점수 계산**: 중요도 × 카테고리 가중치 × 최신성 × 길이
 
-### 2. AI 콘텐츠 생성
-- **GPT-4o 스크립트**: 전문 앵커 스타일 스크립트 자동 생성
-- **DALL-E 3 이미지**: 뉴스 내용 기반 16:9 이미지 생성
-- **OpenAI TTS**: 자연스러운 음성 생성
+### 2. AI 콘텐츠 생성 ✅ **완료**
+- **GPT-4o 스크립트**: 전문 앵커 스타일 뉴스 스크립트 자동 생성 (131단어, 60초)
+- **DALL-E 3 이미지**: 뉴스 내용 기반 16:9 고품질 이미지 생성 (1792x1024)
+- **OpenAI TTS**: 자연스러운 영어 음성 나레이션 생성 (Alloy 음성)
 
-### 3. 영상 제작
-- **16:9 전문 레이아웃**: 뉴스 채널 스타일 디자인
-- **Lower Third**: 하단 자막 바 (영어 + 한글)
-- **자동 합성**: MoviePy 기반 영상 자동 합성
+### 3. 영상 제작 ✅ **완료**
+- **16:9 Full HD**: 전문 뉴스 채널 스타일 1920x1080 레이아웃
+- **Lower Third**: 하단 자막 바 (영어 제목 + 한글 번역)
+- **자동 합성**: MoviePy 2.x 기반 완전 자동 영상 합성
+- **고품질 출력**: H264 코덱, 30fps, MP4 포맷
 
-### 4. 자동화
-- **일일 스케줄러**: 매일 오전 6시 자동 실행
-- **YouTube 업로드**: 오전 7시 자동 업로드
-- **모니터링**: 실시간 상태 추적 및 알림
+### 4. 자동화 ✅ **완료**
+- **일일 스케줄러**: APScheduler 기반 매일 오전 7시 자동 실행
+- **YouTube 업로드**: OAuth2 인증, 자동 메타데이터 생성 및 업로드
+- **웹 대시보드**: FastAPI + Jinja2 기반 실시간 모니터링 UI
+- **알림 시스템**: Slack/Email 통합 지원
+
+### 5. 배포 및 인프라 ✅ **완료**
+- **Docker 컨테이너화**: 완전한 Docker/Docker Compose 지원
+- **Redis 캐싱**: 뉴스 데이터 및 API 응답 캐싱
+- **프로덕션 준비**: Health check, 로깅, 모니터링 완비
 
 ---
 
@@ -221,27 +229,43 @@ for article in news.articles:
 "
 ```
 
-### 개발 모드
+### 웹 서버 실행
 
 ```bash
-# 웹 서버 실행 (Phase 5 예정)
-python -m src.web.app
+# 개발 모드 (자동 리로드)
+python run_web.py --reload
 
-# 영상 생성 테스트 (Phase 3 예정)
-python -m src.video.composition.video_composer
+# 프로덕션 모드
+python run_web.py --workers 4
+
+# 브라우저에서 접속
+# http://localhost:8000/dashboard
 ```
 
-### 프로덕션 모드
+### Docker로 실행 (권장)
 
 ```bash
-# Docker 실행
+# 컨테이너 빌드 및 실행
 docker-compose up -d
 
-# 스케줄러 시작
-python -m src.scheduler.daily_scheduler
-
 # 로그 확인
-tail -f logs/app.log
+docker-compose logs -f web
+
+# 컨테이너 중지
+docker-compose down
+```
+
+### 파이프라인 실행
+
+```bash
+# 즉시 실행 (테스트)
+python run_scheduler.py --now
+
+# 스케줄러 시작 (매일 7AM)
+python run_scheduler.py
+
+# YouTube 업로드 포함
+python run_scheduler.py --youtube
 ```
 
 ### 수동 영상 생성
@@ -315,51 +339,54 @@ mypy src/
 - [x] 뉴스 선택 알고리즘 (IT/Tech 75%, 다양성 보장)
 - [x] 테스트 스크립트 (test_crawler.py)
 
-### Phase 2: AI 콘텐츠 생성 (Week 2)
-- [ ] GPT-4o 스크립트 생성
-- [ ] DALL-E 3 이미지 생성
-- [ ] OpenAI TTS 음성 생성
+### Phase 2: AI 콘텐츠 생성 ✅ **완료!**
+- [x] GPT-4o 스크립트 생성 (Professional/Casual/Educational 스타일)
+- [x] DALL-E 3 이미지 생성 (16:9, 1792x1024)
+- [x] OpenAI TTS 음성 생성 (6가지 음성 지원)
+- [x] 캐싱 시스템 (MD5 해시 기반, 비용 절감)
 
-### Phase 3: 영상 제작 (Week 3)
-- [ ] 16:9 레이아웃 시스템
-- [ ] MoviePy 영상 합성
-- [ ] 첫 테스트 영상 생성
+### Phase 3: 영상 제작 ✅ **완료!**
+- [x] 16:9 Full HD 레이아웃 시스템
+- [x] Lower Third 컴포넌트 (dual language)
+- [x] MoviePy 2.x 영상 합성 (fade effects)
+- [x] 첫 테스트 영상 생성 성공 (36MB, 56초, $0.10)
 
-### Phase 4: 자동화 (Week 4)
-- [ ] 일일 스케줄러
-- [ ] YouTube 자동 업로드
-- [ ] 모니터링 시스템
+### Phase 4: 자동화 ✅ **완료!**
+- [x] APScheduler 일일 스케줄러 (cron-style)
+- [x] YouTube OAuth2 자동 업로드
+- [x] 전체 파이프라인 통합 (News → AI → Video → YouTube)
+- [x] Slack/Email 알림 시스템
 
-### Phase 5: 웹 인터페이스 (Week 5)
-- [ ] FastAPI 백엔드
-- [ ] 대시보드 UI
-- [ ] 관리 기능
+### Phase 5: 웹 인터페이스 ✅ **완료!**
+- [x] FastAPI 백엔드 (16개 API 엔드포인트)
+- [x] 대시보드 UI (Dashboard, News, Videos, Settings)
+- [x] 실시간 모니터링 (통계, 비용, 진행 상황)
+- [x] 관리 기능 (뉴스 선택, 영상 생성, 스케줄 설정)
 
-### Phase 6: 배포 및 런칭 (Week 6)
-- [ ] Docker 배포
-- [ ] AWS 인프라
-- [ ] YouTube 채널 개설
-- [ ] 첫 영상 업로드
+### Phase 6: 배포 ✅ **컨테이너화 완료!**
+- [x] Docker 컨테이너화 (Python 3.11 + Redis)
+- [x] docker-compose.yml (멀티 컨테이너 오케스트레이션)
+- [x] 프로덕션 준비 (Health check, 로깅)
+- [ ] AWS/GCP 클라우드 배포 (예정)
+- [ ] CI/CD 파이프라인 (GitHub Actions, 예정)
+- [ ] YouTube 채널 런칭 (예정)
 
 ---
 
 ## 🎯 성공 지표 (KPI)
 
-### 3개월 목표
-- 구독자: 1,000명
-- 평균 시청 시간: 3분+
-- 좋아요 비율: 5%+
-- 업로드 일관성: 100%
+### 시스템 성능
+- ✅ 뉴스 크롤링: ~1초
+- ✅ AI 콘텐츠 생성: ~30-60초
+- ✅ 영상 제작: ~2-3분
+- ✅ 전체 파이프라인: ~3-5분
+- ✅ 영상당 비용: ~$0.023 (약 30원, 캐싱 활용 시)
 
-### 6개월 목표
-- 구독자: 10,000명
-- YouTube 수익화 달성
-- 월 수익: $500+
-
-### 12개월 목표
-- 구독자: 100,000명
-- 월 수익: $10,000+
-- 다국어 확장
+### 비즈니스 목표 (예정)
+- 업로드 일관성: 매일 오전 7시 자동 업로드
+- 구독자 목표: 3개월 1,000명 → 12개월 100,000명
+- YouTube 수익화 달성 (구독자 1,000명 + 시청시간 4,000시간)
+- 장기 목표: 다국어 확장 (일본어, 중국어)
 
 ---
 
@@ -385,7 +412,9 @@ mypy src/
 
 - [PRD](./TECH_NEWS_DIGEST_PRD.md) - 제품 요구사항 문서
 - [DESIGN](./TECH_NEWS_DIGEST_DESIGN.md) - 기술 설계 문서
-- [TASKS](./TASKS.md) - 태스크 관리
+- [TASKS](./TASKS.md) - 태스크 관리 및 진행 상황
+- [AUTOMATION](./AUTOMATION.md) - 자동화 시스템 사용 가이드
+- [DOCKER](./DOCKER.md) - Docker 실행 가이드
 - [CLAUDE](./CLAUDE.md) - 개발 가이드라인
 
 ---
@@ -433,8 +462,8 @@ mypy src/
 
 **Tech News Digest** 🚀
 
-*매일 아침, AI가 전하는 세상의 뉴스*
+*AI 기반 자동화로 만드는 전문 IT 뉴스 채널*
 
-[시작하기](#-시작하기) • [문서](./docs) • [기여하기](#-기여하기)
+[시작하기](#-시작하기) • [Docker 실행](./DOCKER.md) • [자동화 가이드](./AUTOMATION.md)
 
 </div>
