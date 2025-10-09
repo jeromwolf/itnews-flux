@@ -47,10 +47,12 @@
 
 ## ✨ 주요 기능
 
-### 1. 뉴스 수집 및 선택
-- **멀티 소스 크롤링**: TechCrunch, The Verge, Ars Technica 등
-- **스마트 선택**: AI 기반 중요도 평가 및 다양성 필터
-- **IT 중심**: IT/Tech 뉴스 60-80%, 경제 뉴스 20-40%
+### 1. 뉴스 수집 및 선택 ✅ **완료**
+- **멀티 소스 크롤링**: TechCrunch, The Verge (현재 2개 완료)
+- **스마트 선택**: 점수 기반 랭킹 + 다양성 필터
+- **IT 중심**: IT/Tech 뉴스 75%, 경제 뉴스 25%
+- **15개 카테고리**: AI/ML (1.5x), Software (1.3x), Startup (1.2x), Security (1.2x) 등
+- **자동 점수 계산**: 중요도 × 카테고리 가중치 × 최신성 × 길이
 
 ### 2. AI 콘텐츠 생성
 - **GPT-4o 스크립트**: 전문 앵커 스타일 스크립트 자동 생성
@@ -101,18 +103,26 @@
 ```
 tech-news-digest/
 ├── src/
-│   ├── core/                    # 핵심 라이브러리
-│   │   ├── logging/            # 로깅 시스템
-│   │   ├── config/             # 설정 관리
-│   │   ├── ai_services/        # AI 서비스
-│   │   └── utils/              # 유틸리티
+│   ├── core/                    # 핵심 라이브러리 ✅
+│   │   ├── logging/            # 로깅 시스템 ✅
+│   │   │   ├── logger.py                # 로거 관리 ✅
+│   │   │   ├── formatters.py            # JSON/Text 포맷터 ✅
+│   │   │   └── filters.py               # 민감정보 필터 ✅
+│   │   ├── config/             # 설정 관리 ✅
+│   │   │   └── settings.py              # Pydantic Settings ✅
+│   │   ├── ai_services/        # AI 서비스 (Phase 2)
+│   │   └── utils/              # 유틸리티 (Phase 2)
 │   │
-│   ├── news/                    # 뉴스 처리
-│   │   ├── crawler/            # 크롤러
-│   │   │   ├── base_crawler.py
-│   │   │   └── sources/        # 뉴스 소스별
-│   │   ├── processor/          # 처리기
-│   │   └── selector/           # 선택기
+│   ├── news/                    # 뉴스 처리 ✅
+│   │   ├── models.py           # 데이터 모델 ✅
+│   │   ├── crawler/            # 크롤러 ✅
+│   │   │   ├── base_crawler.py         # 추상 클래스 ✅
+│   │   │   └── sources/                # 뉴스 소스별 ✅
+│   │   │       ├── techcrunch.py       # TechCrunch ✅
+│   │   │       └── theverge.py         # The Verge ✅
+│   │   ├── processor/          # 처리기 (Phase 2)
+│   │   └── selector/           # 선택기 ✅
+│   │       └── news_selector.py        # 뉴스 선택 알고리즘 ✅
 │   │
 │   ├── video/                   # 영상 제작
 │   │   ├── layout/             # 레이아웃
@@ -126,10 +136,11 @@ tech-news-digest/
 │       ├── app.py
 │       └── templates/
 │
-├── tests/                       # 테스트
+├── tests/                       # 테스트 (Phase 2+)
 ├── config/                      # 설정
 ├── resources/                   # 리소스
 ├── output/                      # 결과물
+├── test_crawler.py              # 크롤러 테스트 스크립트 ✅
 └── docs/                        # 문서
     ├── TECH_NEWS_DIGEST_PRD.md
     ├── TECH_NEWS_DIGEST_DESIGN.md
@@ -191,16 +202,32 @@ REDIS_URL=redis://localhost:6379
 
 ## 📖 사용 방법
 
+### 크롤러 테스트 (Phase 1 완료)
+
+```bash
+# 간단한 크롤러 테스트 (TechCrunch + The Verge)
+python test_crawler.py
+
+# 특정 크롤러 테스트
+python -c "
+from src.news.crawler.sources.techcrunch import create_techcrunch_crawler
+
+crawler = create_techcrunch_crawler()
+news = crawler.fetch_news(limit=10)
+print(f'Fetched {news.total} articles')
+
+for article in news.articles:
+    print(f'- [{article.category.value}] {article.title}')
+"
+```
+
 ### 개발 모드
 
 ```bash
-# 웹 서버 실행
+# 웹 서버 실행 (Phase 5 예정)
 python -m src.web.app
 
-# 크롤러 테스트
-python -m src.news.crawler.sources.techcrunch
-
-# 영상 생성 테스트
+# 영상 생성 테스트 (Phase 3 예정)
 python -m src.video.composition.video_composer
 ```
 
@@ -270,20 +297,23 @@ mypy src/
 
 ## 🗓️ 로드맵
 
-### Phase 0: 프로젝트 기반 구축 ✅ (현재)
+### Phase 0: 프로젝트 기반 구축 ✅ **완료!**
 - [x] PRD 작성
 - [x] DESIGN 문서
 - [x] TASKS.md
 - [x] CLAUDE.md
 - [x] README.md
-- [ ] 프로젝트 구조 생성
-- [ ] 로깅 시스템
+- [x] 프로젝트 구조 생성
+- [x] 로깅 시스템 (프로덕션급)
+- [x] 설정 관리 (Pydantic Settings)
 
-### Phase 1: 뉴스 크롤링 (Week 1)
-- [ ] BaseCrawler 구현
-- [ ] TechCrunch 크롤러
-- [ ] 멀티 소스 통합
-- [ ] 뉴스 선택 알고리즘
+### Phase 1: 뉴스 크롤링 ✅ **완료!**
+- [x] 뉴스 데이터 모델 (News, NewsCategory, NewsSource)
+- [x] BaseCrawler 구현 (재사용 가능한 추상 클래스)
+- [x] TechCrunch 크롤러 (AI, Startup, Funding)
+- [x] The Verge 크롤러 (Mobile, Hardware, Reviews)
+- [x] 뉴스 선택 알고리즘 (IT/Tech 75%, 다양성 보장)
+- [x] 테스트 스크립트 (test_crawler.py)
 
 ### Phase 2: AI 콘텐츠 생성 (Week 2)
 - [ ] GPT-4o 스크립트 생성
