@@ -1,0 +1,386 @@
+# Tech News Digest - .gitignore
+
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ============================================================================
+# IDEs
+# ============================================================================
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# OS
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+
+# API Keys & Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem
+credentials.json
+service-account.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+database/
+db/
+
+# Logs
+logs/
+*.log
+log_*.txt
+
+# Output files
+output/
+videos/
+images/
+audio/
+thumbnails/
+temp/
+tmp/
+cache/
+
+# Resources (large files)
+resources/fonts/*.ttf
+resources/fonts/*.otf
+resources/music/*.mp3
+resources/music/*.wav
+resources/stock_footage/*.mp4
+resources/graphics/*.psd
+resources/graphics/*.ai
+
+# Generated files
+generated/
+processed/
+*.generated.*
+
+# Test outputs
+test_output/
+test_videos/
+test_images/
+
+# ============================================================================
+# Media Files (if too large)
+# ============================================================================
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+*.webm
+
+# Audio files
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+
+# Image files (uncomment if too large)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.bmp
+# *.tiff
+# *.webp
+
+# ============================================================================
+# Cloud & Deployment
+# ============================================================================
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# AWS
+.aws/
+*.pem
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# ============================================================================
+# CI/CD
+# ============================================================================
+
+# GitHub Actions
+.github/workflows/*.log
+
+# CircleCI
+.circleci/local/
+
+# ============================================================================
+# Documentation (Draft)
+# ============================================================================
+
+# Draft documents
+drafts/
+*.draft.md
+*.wip.md
+
+# Private notes
+notes/
+private/
+personal/
+
+# ============================================================================
+# Development
+# ============================================================================
+
+# Experiments
+experiments/
+playground/
+sandbox/
+
+# Benchmarks
+benchmarks/
+profiling/
+
+# Debug
+debug/
+*.debug
+
+# ============================================================================
+# Package managers
+# ============================================================================
+
+# npm
+node_modules/
+package-lock.json
+
+# yarn
+yarn.lock
+
+# ============================================================================
+# Keep these files (exceptions)
+# ============================================================================
+
+# Keep example files
+!.env.example
+!config/example.yaml
+
+# Keep placeholder directories
+!resources/fonts/.gitkeep
+!resources/music/.gitkeep
+!resources/graphics/.gitkeep
+!output/.gitkeep
+
+# Keep small test files
+!tests/fixtures/*.jpg
+!tests/fixtures/*.png
+!tests/fixtures/*.mp3
