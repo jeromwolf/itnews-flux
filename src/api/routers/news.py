@@ -71,7 +71,7 @@ async def get_news(
         # Update cache
         for news in all_news[:limit]:
             # Generate unique ID
-            news_id = f"{news.source.value}-{news.url.split('/')[-1][:20]}"
+            news_id = f"{news.source.value}-{str(news.url).split('/')[-1][:20]}"
             _news_cache[news_id] = news
 
         _cache_timestamp = datetime.now()
@@ -79,7 +79,7 @@ async def get_news(
     # Convert to response format
     news_responses = [
         NewsResponse(
-            id=f"{news.source.value}-{news.url.split('/')[-1][:20]}",
+            id=f"{news.source.value}-{str(news.url).split('/')[-1][:20]}",
             title=news.title,
             summary=news.summary,
             url=str(news.url),

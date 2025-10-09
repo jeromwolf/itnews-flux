@@ -15,7 +15,7 @@ class NewsResponse(BaseModel):
     published_at: datetime
     source: str
     category: str
-    score: float = Field(..., ge=0.0, le=10.0, description="Relevance score")
+    score: float = Field(..., ge=0.0, description="Relevance score")
     image_url: str | None = None
 
     class Config:
