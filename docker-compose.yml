@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Main web application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: itnews-flux-web
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for development (comment out for production)
+      - .:/app
+      # Persist output files
+      - ./output:/app/output
+      # Persist logs
+      - ./logs:/app/logs
+      # Persist config
+      - ./config:/app/config
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Load from .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - YOUTUBE_CLIENT_SECRETS_FILE=/app/config/client_secrets.json
+      - YOUTUBE_TOKEN_FILE=/app/config/youtube_token.pickle
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - itnews-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: itnews-flux-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - itnews-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  itnews-network:
+    driver: bridge
+
+volumes:
+  redis-data:
