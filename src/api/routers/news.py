@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
+from ...core.ai_services import create_translation_service
 from ...core.logging import get_logger
 from ...news.crawler import create_news_crawler
 from ...news.models import News
@@ -11,6 +12,17 @@ from ..schemas.news import NewsListResponse, NewsResponse, NewsSelectionRequest
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/news", tags=["news"])
+
+# Translation service (lazy initialization)
+_translator = None
+
+
+def get_translator():
+    """Get or create translation service instance."""
+    global _translator
+    if _translator is None:
+        _translator = create_translation_service(model="gpt-4o-mini", enable_cache=True)
+    return _translator
 
 # In-memory cache for news (in production, use Redis or database)
 _news_cache: dict[str, News] = {}
@@ -23,6 +35,7 @@ async def get_news(
     max_age_hours: int = 24,
     limit: int = 10,
     force_refresh: bool = False,
+    translate: bool = True,
 ) -> NewsListResponse:
     """
     Fetch latest tech news from configured sources.
@@ -32,6 +45,7 @@ async def get_news(
         max_age_hours: Maximum age of news in hours
         limit: Maximum number of news articles to return
         force_refresh: Force refresh cache
+        translate: Translate English news to Korean (default: True)
 
     Returns:
         List of news articles with metadata
@@ -67,6 +81,23 @@ async def get_news(
 
         # Sort by score (descending)
         all_news.sort(key=lambda x: x.score, reverse=True)
+
+        # Translate if requested
+        if translate:
+            translator = get_translator()
+            for news in all_news[:limit]:
+                try:
+                    result = translator.translate_news(
+                        title=news.title, summary=news.summary or "", preserve_technical_terms=True
+                    )
+                    # Update news with translated content
+                    news.title = result["title"]
+                    if result["summary"]:
+                        news.summary = result["summary"]
+                    logger.debug(f"Translated: {news.title}")
+                except Exception as e:
+                    logger.warning(f"Translation failed for '{news.title}': {e}")
+                    # Keep original if translation fails
 
         # Update cache
         for news in all_news[:limit]:

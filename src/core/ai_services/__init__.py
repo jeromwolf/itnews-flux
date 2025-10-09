@@ -5,6 +5,7 @@ Provides AI-powered content generation services:
 - GPT-4o: News script generation
 - DALL-E 3: Image generation
 - TTS: Voice narration generation
+- Translation: English to Korean translation
 """
 
 from .base import AIServiceError, BaseAIService, GenerationError, RateLimitError
@@ -19,6 +20,7 @@ from .models import (
     TTSVoice,
 )
 from .script_generator import ScriptGenerator, create_script_generator
+from .translator import TranslationService, create_translation_service
 from .tts_generator import TTSGenerator, create_tts_generator
 
 __all__ = [
@@ -31,10 +33,12 @@ __all__ = [
     "ScriptGenerator",
     "ImageGenerator",
     "TTSGenerator",
+    "TranslationService",
     # Factory functions
     "create_script_generator",
     "create_image_generator",
     "create_tts_generator",
+    "create_translation_service",
     # Models
     "GeneratedScript",
     "GeneratedImage",
