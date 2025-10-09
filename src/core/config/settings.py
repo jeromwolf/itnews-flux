@@ -35,7 +35,12 @@ class LogFormat(str, Enum):
 class OpenAISettings(BaseSettings):
     """OpenAI API settings."""
 
-    model_config = SettingsConfigDict(env_prefix="OPENAI_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="OPENAI_",
+        extra="ignore",
+    )
 
     api_key: str = Field(..., description="OpenAI API key")
     org_id: str | None = Field(None, description="OpenAI Organization ID")
@@ -59,7 +64,12 @@ class OpenAISettings(BaseSettings):
 class YouTubeSettings(BaseSettings):
     """YouTube API settings."""
 
-    model_config = SettingsConfigDict(env_prefix="YOUTUBE_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="YOUTUBE_",
+        extra="ignore",
+    )
 
     api_key: str = Field(..., description="YouTube Data API key")
     channel_id: str | None = Field(None, description="YouTube channel ID")
