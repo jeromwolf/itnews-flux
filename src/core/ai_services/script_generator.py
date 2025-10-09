@@ -42,7 +42,7 @@ class ScriptGenerator(BaseAIService):
     def generate(
         self,
         news: News,
-        style: ScriptStyle = ScriptStyle.PROFESSIONAL,
+        style: ScriptStyle | str = ScriptStyle.PROFESSIONAL,
         target_duration: int = 60,  # 60 seconds per news
         include_vocabulary: bool = True,
     ) -> GeneratedScript:
@@ -51,7 +51,7 @@ class ScriptGenerator(BaseAIService):
 
         Args:
             news: News article
-            style: Script style
+            style: Script style (enum or string)
             target_duration: Target duration in seconds
             include_vocabulary: Extract key vocabulary
 
@@ -61,6 +61,10 @@ class ScriptGenerator(BaseAIService):
         Raises:
             GenerationError: If generation fails
         """
+        # Convert string to enum if needed
+        if isinstance(style, str):
+            style = ScriptStyle(style)
+
         self.logger.info(
             f"Generating script for: {news.title[:50]}... "
             f"(style={style.value}, duration={target_duration}s)"

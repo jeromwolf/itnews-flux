@@ -52,7 +52,7 @@ class TTSGenerator(BaseAIService):
     def generate(
         self,
         text: str,
-        voice: TTSVoice = TTSVoice.ALLOY,
+        voice: TTSVoice | str = TTSVoice.ALLOY,
         speed: float = 1.0,
         use_hd: bool = False,
     ) -> GeneratedAudio:
@@ -61,7 +61,7 @@ class TTSGenerator(BaseAIService):
 
         Args:
             text: Text to convert to speech
-            voice: Voice to use
+            voice: Voice to use (enum or string)
             speed: Speech speed (0.25-4.0)
             use_hd: Use HD model (better quality, 2x cost)
 
@@ -76,6 +76,10 @@ class TTSGenerator(BaseAIService):
 
         if not (0.25 <= speed <= 4.0):
             raise ValueError("Speed must be between 0.25 and 4.0")
+
+        # Convert string to enum if needed
+        if isinstance(voice, str):
+            voice = TTSVoice(voice)
 
         self.logger.info(
             f"Generating audio: {len(text)} chars, "
