@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: itnews-flux-web
     ports:
-      - "8000:8000"
+      - "3300:8000"
     volumes:
       # Mount source code for development (comment out for production)
       - .:/app

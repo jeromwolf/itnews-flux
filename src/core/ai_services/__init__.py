@@ -23,6 +23,9 @@ from .script_generator import ScriptGenerator, create_script_generator
 from .translator import TranslationService, create_translation_service
 from .tts_generator import TTSGenerator, create_tts_generator
 
+# Alias for backward compatibility
+create_translator = create_translation_service
+
 __all__ = [
     # Base classes
     "BaseAIService",
@@ -39,6 +42,7 @@ __all__ = [
     "create_image_generator",
     "create_tts_generator",
     "create_translation_service",
+    "create_translator",  # Alias
     # Models
     "GeneratedScript",
     "GeneratedImage",

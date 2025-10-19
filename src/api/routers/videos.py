@@ -8,7 +8,9 @@ from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...automation import PipelineConfig, create_pipeline
+from ...automation.youtube_metadata import generate_youtube_metadata, format_metadata_for_display
 from ...core.logging import get_logger
+from ...video import VideoProject, VideoProjectConfig
 from ..schemas.video import VideoCreateRequest, VideoResponse, VideoSegmentInfo, VideoStatus
 from .news import get_cached_news
 
@@ -116,6 +118,7 @@ async def list_videos(limit: int = 10, status: VideoStatus | None = None) -> lis
             segments=v["segments"],
             total_cost=v["total_cost"],
             error=v["error"],
+            youtube_metadata=v.get("youtube_metadata"),
         )
         for v in videos[:limit]
     ]
@@ -147,6 +150,7 @@ async def get_video(video_id: str) -> VideoResponse:
         segments=v["segments"],
         total_cost=v["total_cost"],
         error=v["error"],
+        youtube_metadata=v.get("youtube_metadata"),
     )
 
 
@@ -223,6 +227,16 @@ async def _generate_video(video_id: str) -> None:
         video_path = await loop.run_in_executor(None, pipeline.create_video, segments)
         logger.info(f"Video created: {video_path}")
 
+        # Generate YouTube metadata
+        project = VideoProject(
+            project_id=video_id,
+            title=video_data["title"],
+            config=VideoProjectConfig(),
+            segments=segments,
+        )
+        youtube_metadata = generate_youtube_metadata(project)
+        logger.info(f"YouTube metadata generated for {video_id}")
+
         # Upload to YouTube (if enabled)
         youtube_url = None
         if video_data["upload_to_youtube"] and pipeline.youtube_uploader:
@@ -245,11 +259,12 @@ async def _generate_video(video_id: str) -> None:
             VideoSegmentInfo(
                 title=s.title,
                 duration=s.duration,
-                cost=(s.script.cost + s.image.cost + s.audio.cost),
+                cost=(s.script.total_cost + s.image.total_cost + s.audio.total_cost),
             )
             for s in segments
         ]
         video_data["total_cost"] = sum(seg.cost for seg in video_data["segments"])
+        video_data["youtube_metadata"] = youtube_metadata
 
         logger.info(
             f"Video {video_id} completed - Cost: ${video_data['total_cost']:.4f}, "

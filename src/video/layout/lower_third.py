@@ -97,30 +97,44 @@ class LowerThirdGenerator:
         # Calculate text positions
         padding = lower_third_config.padding
         text_color = lower_third_config.text_color
+        max_width = video_width - (padding * 2)  # Available width for text
 
-        # Primary text (English) - top
+        # Primary text (English) - top with auto wrap
+        primary_text_wrapped = self._wrap_text(
+            lower_third_config.primary_text,
+            primary_font,
+            max_width,
+            draw
+        )
         primary_y = padding
         draw.text(
             (padding, primary_y),
-            lower_third_config.primary_text,
+            primary_text_wrapped,
             fill=text_color,
             font=primary_font,
         )
 
-        # Secondary text (Korean) - bottom
+        # Secondary text (Korean) - bottom with auto wrap
         if lower_third_config.secondary_text:
             # Calculate position below primary text
             try:
                 _, _, _, primary_height = draw.textbbox(
-                    (0, 0), lower_third_config.primary_text, font=primary_font
+                    (0, 0), primary_text_wrapped, font=primary_font
                 )
             except:
-                primary_height = lower_third_config.primary_font_size
+                primary_height = lower_third_config.primary_font_size * 1.5  # Estimate for wrapped text
+
+            secondary_text_wrapped = self._wrap_text(
+                lower_third_config.secondary_text,
+                secondary_font,
+                max_width,
+                draw
+            )
 
             secondary_y = primary_y + primary_height + 10  # 10px spacing
             draw.text(
                 (padding, secondary_y),
-                lower_third_config.secondary_text,
+                secondary_text_wrapped,
                 fill=text_color,
                 font=secondary_font,
             )
@@ -158,16 +172,31 @@ class LowerThirdGenerator:
 
     def _load_font(self, size: int) -> ImageFont.FreeTypeFont:
         """
-        Load font with fallback to default.
+        Load font with Korean support and fallback.
 
         Args:
             size: Font size
 
         Returns:
-            Font object
+            Font object with Korean glyph support
         """
-        # Try to load system fonts
+        # Try to load fonts with Korean support (in order of preference)
         font_paths = [
+            # macOS - Korean fonts
+            "/System/Library/Fonts/AppleSDGothicNeo.ttc",  # Best Korean font
+            "/System/Library/AssetsV2/com_apple_MobileAsset_Font7/bad9b4bf17cf1669dde54184ba4431c22dcad27b.asset/AssetData/NanumGothic.ttc",
+            "/Library/Fonts/NanumGothic.ttf",
+
+            # Linux - Korean fonts
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+
+            # Windows - Korean fonts
+            "C:\\Windows\\Fonts\\malgun.ttf",  # Malgun Gothic
+            "C:\\Windows\\Fonts\\gulim.ttc",   # Gulim
+
+            # Fallback to English fonts (no Korean support)
             "/System/Library/Fonts/Helvetica.ttc",  # macOS
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
             "C:\\Windows\\Fonts\\arial.ttf",  # Windows
@@ -176,13 +205,59 @@ class LowerThirdGenerator:
         for font_path in font_paths:
             try:
                 if Path(font_path).exists():
-                    return ImageFont.truetype(font_path, size)
-            except Exception:
+                    font = ImageFont.truetype(font_path, size)
+                    self.logger.info(f"Loaded font: {Path(font_path).name} (size={size})")
+                    return font
+            except Exception as e:
+                self.logger.debug(f"Failed to load {font_path}: {e}")
                 continue
 
-        # Fallback to default
-        self.logger.warning(f"Using default font (size={size})")
+        # Fallback to default (warning: no Korean support)
+        self.logger.warning(f"Using default font (size={size}) - Korean characters may not display correctly")
         return ImageFont.load_default()
+
+    def _wrap_text(self, text: str, font: ImageFont.FreeTypeFont, max_width: int, draw: ImageDraw.ImageDraw) -> str:
+        """
+        Wrap text to fit within max width.
+
+        Args:
+            text: Text to wrap
+            font: Font to use
+            max_width: Maximum width in pixels
+            draw: ImageDraw instance for measuring text
+
+        Returns:
+            Wrapped text with newlines
+        """
+        words = text.split()
+        lines = []
+        current_line = []
+
+        for word in words:
+            # Try adding word to current line
+            test_line = ' '.join(current_line + [word])
+
+            # Measure text width
+            try:
+                bbox = draw.textbbox((0, 0), test_line, font=font)
+                text_width = bbox[2] - bbox[0]
+            except:
+                # Fallback: estimate width
+                text_width = len(test_line) * (font.size if hasattr(font, 'size') else 12) * 0.6
+
+            if text_width <= max_width:
+                current_line.append(word)
+            else:
+                # Line is too long, start new line
+                if current_line:
+                    lines.append(' '.join(current_line))
+                current_line = [word]
+
+        # Add last line
+        if current_line:
+            lines.append(' '.join(current_line))
+
+        return '\n'.join(lines)
 
     def _hex_to_rgba(self, hex_color: str, opacity: float = 1.0) -> Tuple[int, int, int, int]:
         """

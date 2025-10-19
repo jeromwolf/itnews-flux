@@ -57,6 +57,7 @@ class VideoResponse(BaseModel):
     segments: list[VideoSegmentInfo] = []
     total_cost: float = Field(default=0.0)
     error: str | None = None
+    youtube_metadata: dict | None = Field(default=None, description="YouTube upload metadata")
 
     class Config:
         json_schema_extra = {

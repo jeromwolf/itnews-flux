@@ -120,8 +120,41 @@ async function loadVideos() {
                             </p>
                         ` : ''}
 
+                        <!-- YouTube Metadata -->
+                        ${video.youtube_metadata ? `
+                            <details style="margin-top: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 6px;">
+                                <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color);">
+                                    📺 YouTube Metadata
+                                </summary>
+                                <div style="margin-top: 1rem;">
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong>Title:</strong>
+                                        <p style="margin: 0.5rem 0; padding: 0.5rem; background: white; border-radius: 4px; font-family: monospace;">${video.youtube_metadata.title}</p>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong>Description:</strong>
+                                        <pre style="margin: 0.5rem 0; padding: 0.5rem; background: white; border-radius: 4px; white-space: pre-wrap; font-size: 0.85rem; max-height: 300px; overflow-y: auto;">${video.youtube_metadata.description}</pre>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong>Tags (${video.youtube_metadata.tags.length}):</strong>
+                                        <div style="margin: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                            ${video.youtube_metadata.tags.slice(0, 20).map(tag => `<span style="padding: 0.25rem 0.5rem; background: var(--primary-color); color: white; border-radius: 4px; font-size: 0.85rem;">${tag}</span>`).join('')}
+                                            ${video.youtube_metadata.tags.length > 20 ? `<span style="padding: 0.25rem 0.5rem; background: #6b7280; color: white; border-radius: 4px; font-size: 0.85rem;">+${video.youtube_metadata.tags.length - 20} more</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <strong>Settings:</strong>
+                                        <p style="margin: 0.5rem 0; color: var(--text-secondary);">
+                                            Category: Science & Technology (28) • Privacy: ${video.youtube_metadata.privacy_status.toUpperCase()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </details>
+                        ` : ''}
+
                         <!-- Actions -->
                         <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                            ${video.youtube_metadata ? `<button onclick="copyMetadata('${video.id}')" class="btn btn-secondary">📋 Copy Metadata</button>` : ''}
                             ${video.video_path ? `<button onclick="downloadVideo('${video.video_path}')" class="btn btn-secondary">📥 Download</button>` : ''}
                             <button onclick="deleteVideo('${video.id}')" class="btn btn-danger">🗑️ Delete</button>
                         </div>
@@ -162,6 +195,25 @@ async function deleteVideo(videoId) {
     } catch (error) {
         console.error('Error deleting video:', error);
         utils.showToast('Error deleting video: ' + error.message, 'error');
+    }
+}
+
+async function copyMetadata(videoId) {
+    try {
+        const video = await API.Videos.getVideo(videoId);
+        if (!video.youtube_metadata) {
+            utils.showToast('No metadata available', 'error');
+            return;
+        }
+
+        const metadata = video.youtube_metadata;
+        const text = `Title:\n${metadata.title}\n\nDescription:\n${metadata.description}\n\nTags:\n${metadata.tags.join(', ')}`;
+
+        await navigator.clipboard.writeText(text);
+        utils.showToast('Metadata copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Error copying metadata:', error);
+        utils.showToast('Error copying metadata: ' + error.message, 'error');
     }
 }
 

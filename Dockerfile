@@ -17,7 +17,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     imagemagick \
     fonts-noto-cjk \
+    fontconfig \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure ImageMagick for text rendering
+RUN sed -i '/<policy domain="path" rights="none" pattern="@\*"/d' /etc/ImageMagick-6/policy.xml || true && \
+    fc-cache -fv
 
 # Copy requirements first for better caching
 COPY requirements.txt .

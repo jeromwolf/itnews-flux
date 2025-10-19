@@ -164,16 +164,21 @@ class VideoComposer:
         """
         # Create image clip (background)
         image_clip = ImageClip(str(segment.image.local_path))
-        image_clip = image_clip.with_duration(segment.duration)
         image_clip = image_clip.resized(width=config.width, height=config.height)
 
         # Add audio
         audio_clip = AudioFileClip(str(segment.audio.local_path))
+
+        # IMPORTANT: 이미지 duration을 오디오 길이에 맞춤 (오디오 겹침 방지)
+        actual_duration = audio_clip.duration
+        image_clip = image_clip.with_duration(actual_duration)
         image_clip = image_clip.with_audio(audio_clip)
+
+        self.logger.debug(f"Segment duration: audio={actual_duration:.2f}s")
 
         # Add lower third if enabled
         if segment.show_lower_third:
-            lower_third_clip = self._create_lower_third_clip(segment, config)
+            lower_third_clip = self._create_lower_third_clip(segment, config, actual_duration)
 
             # Composite image + lower third
             final_clip = CompositeVideoClip(
@@ -196,6 +201,7 @@ class VideoComposer:
         self,
         segment: VideoSegment,
         config: VideoProjectConfig,
+        duration: float,
     ) -> VideoClip:
         """
         Create lower third clip for segment.
@@ -203,6 +209,7 @@ class VideoComposer:
         Args:
             segment: Video segment
             config: Project configuration
+            duration: Actual segment duration (from audio)
 
         Returns:
             Lower third video clip
@@ -211,11 +218,10 @@ class VideoComposer:
         lt_generator = LowerThirdGenerator(config)
 
         # Configure lower third
+        # Lower Third: 뉴스 제목만 표시 (영어만, 깔끔하게)
         lt_config = LowerThirdConfig(
             primary_text=segment.title,
-            secondary_text=segment.script.korean_translation[:100]
-            if segment.script
-            else None,
+            secondary_text=None,  # 부제목 없음 (스크립트 내용 표시 방지)
         )
 
         # Generate lower third image
@@ -224,7 +230,7 @@ class VideoComposer:
 
         # Create image clip
         lt_clip = ImageClip(str(temp_path))
-        lt_clip = lt_clip.with_duration(segment.duration)
+        lt_clip = lt_clip.with_duration(duration)  # Use actual audio duration
 
         # Position at bottom
         lt_clip = lt_clip.with_position(("center", "bottom"))
@@ -239,7 +245,7 @@ class VideoComposer:
 
     def _create_intro_clip(self, config: VideoProjectConfig) -> VideoClip:
         """
-        Create intro clip.
+        Create intro clip with Korean font support and custom image.
 
         Args:
             config: Project configuration
@@ -247,36 +253,120 @@ class VideoComposer:
         Returns:
             Intro video clip
         """
-        # Create simple colored intro (can be enhanced later)
-        # Background
-        intro_clip = ColorClip(
-            size=(config.width, config.height),
-            color=self._hex_to_rgb(config.primary_color),
-            duration=config.intro_duration,
-        )
+        # Background: 1. Custom image, 2. AI ON image, 3. Old default, 4. ColorClip fallback
+        if config.use_custom_intro and config.intro_image_path and config.intro_image_path.exists():
+            # Use custom image
+            intro_bg = ImageClip(str(config.intro_image_path))
+            self.logger.info(f"Using custom intro image: {config.intro_image_path}")
+        else:
+            # Try AI ON intro
+            ai_on_intro = Path("resources/ai_on_intro.png")
+            if ai_on_intro.exists():
+                intro_bg = ImageClip(str(ai_on_intro))
+                self.logger.info(f"Using AI ON intro image: {ai_on_intro}")
+            else:
+                # Try old default
+                default_intro = Path("resources/intro_background.png")
+                if default_intro.exists():
+                    intro_bg = ImageClip(str(default_intro))
+                    self.logger.info(f"Using default intro image: {default_intro}")
+                else:
+                    # Fallback to ColorClip
+                    intro_bg = ColorClip(
+                        size=(config.width, config.height),
+                        color=self._hex_to_rgb(config.primary_color),
+                        duration=config.intro_duration,
+                    )
+                    self.logger.warning("No intro image found, using ColorClip fallback")
 
-        # Add title text
+        # Set duration and size
+        intro_bg = intro_bg.with_duration(config.intro_duration)
+        intro_bg = intro_bg.resized(width=config.width, height=config.height)
+
+        # Add title text using PIL for precise control
         try:
-            title_clip = TextClip(
-                text=config.title,
-                font_size=80,
-                color="white",
-                font="Arial-Bold",
-                size=(config.width * 0.8, None),
-            )
-            title_clip = title_clip.with_duration(config.intro_duration)
-            title_clip = title_clip.with_position("center")
-            title_clip = title_clip.with_effects([vfx.FadeIn(0.5), vfx.FadeOut(0.5)])
+            from PIL import Image, ImageDraw, ImageFont
+            import numpy as np
 
-            intro_clip = CompositeVideoClip([intro_clip, title_clip])
+            # Create transparent overlay with text
+            overlay = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+
+            # Use default font with large size
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 140)
+                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 48)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+
+            # Draw "AI ON" in center
+            text1 = "AI ON"
+            bbox1 = draw.textbbox((0, 0), text1, font=font_large)
+            text1_width = bbox1[2] - bbox1[0]
+            text1_height = bbox1[3] - bbox1[1]
+            x1 = (config.width - text1_width) // 2
+            y1 = (config.height - text1_height) // 2 - 60  # Slightly above center
+
+            # Draw stroke (outline)
+            stroke_width = 5
+            for adj_x in range(-stroke_width, stroke_width+1):
+                for adj_y in range(-stroke_width, stroke_width+1):
+                    draw.text((x1+adj_x, y1+adj_y), text1, font=font_large, fill=(0, 0, 0, 255))
+            # Draw main text
+            draw.text((x1, y1), text1, font=font_large, fill=(255, 255, 255, 255))
+
+            # Draw tagline below
+            text2 = "Your Daily Tech Intelligence"
+            bbox2 = draw.textbbox((0, 0), text2, font=font_medium)
+            text2_width = bbox2[2] - bbox2[0]
+            text2_height = bbox2[3] - bbox2[1]
+            x2 = (config.width - text2_width) // 2
+            y2 = y1 + text1_height + 40  # 40px below AI ON
+
+            # Draw stroke
+            stroke_width = 3
+            for adj_x in range(-stroke_width, stroke_width+1):
+                for adj_y in range(-stroke_width, stroke_width+1):
+                    draw.text((x2+adj_x, y2+adj_y), text2, font=font_medium, fill=(0, 0, 0, 255))
+            # Draw main text
+            draw.text((x2, y2), text2, font=font_medium, fill=(255, 255, 255, 255))
+
+            # Convert to numpy array and create clip
+            overlay_array = np.array(overlay)
+            text_clip = ImageClip(overlay_array).with_duration(config.intro_duration)
+            text_clip = text_clip.with_effects([vfx.FadeIn(0.5), vfx.FadeOut(0.5)])
+
+            intro_clip = CompositeVideoClip([intro_bg, text_clip])
+            self.logger.info("AI ON intro created with PIL text overlay")
+
         except Exception as e:
-            self.logger.warning(f"Failed to add title text: {e}")
+            self.logger.warning(f"Failed to add intro text: {e}")
+            intro_clip = intro_bg
+
+        # Add background music if available
+        intro_music_path = Path("resources/intro_music.mp3")
+        if intro_music_path.exists():
+            try:
+                from moviepy import AudioFileClip
+                import moviepy.audio.fx as afx
+
+                music = AudioFileClip(str(intro_music_path))
+                music = music.subclipped(0, min(music.duration, config.intro_duration))
+                # Reduce volume to 30%
+                music = music.with_effects([afx.MultiplyVolume(0.3)])
+                intro_clip = intro_clip.with_audio(music)
+                self.logger.info(f"Intro music added: {intro_music_path}")
+            except Exception as e:
+                self.logger.warning(f"Failed to add intro music: {e}")
+        else:
+            self.logger.info("No intro music found (resources/intro_music.mp3)")
 
         return intro_clip
 
     def _create_outro_clip(self, config: VideoProjectConfig) -> VideoClip:
         """
-        Create outro clip.
+        Create outro clip with Korean font support and custom image.
 
         Args:
             config: Project configuration
@@ -284,29 +374,108 @@ class VideoComposer:
         Returns:
             Outro video clip
         """
-        # Background
-        outro_clip = ColorClip(
-            size=(config.width, config.height),
-            color=self._hex_to_rgb(config.secondary_color),
-            duration=config.outro_duration,
-        )
+        # Background: Use same image as intro for consistency
+        if config.use_custom_outro and config.outro_image_path and config.outro_image_path.exists():
+            # Use custom image
+            outro_bg = ImageClip(str(config.outro_image_path))
+            self.logger.info(f"Using custom outro image: {config.outro_image_path}")
+        else:
+            # Try AI ON intro (same as intro for consistency)
+            ai_on_intro = Path("resources/ai_on_intro.png")
+            if ai_on_intro.exists():
+                outro_bg = ImageClip(str(ai_on_intro))
+                self.logger.info(f"Using AI ON intro image for outro: {ai_on_intro}")
+            else:
+                # Try old default
+                default_outro = Path("resources/outro_background.png")
+                if default_outro.exists():
+                    outro_bg = ImageClip(str(default_outro))
+                    self.logger.info(f"Using default outro image: {default_outro}")
+                else:
+                    # Fallback to ColorClip
+                    outro_bg = ColorClip(
+                        size=(config.width, config.height),
+                        color=self._hex_to_rgb(config.secondary_color),
+                        duration=config.outro_duration,
+                    )
+                    self.logger.warning("No outro image found, using ColorClip fallback")
 
-        # Add text
+        # Set duration and size
+        outro_bg = outro_bg.with_duration(config.outro_duration)
+        outro_bg = outro_bg.resized(width=config.width, height=config.height)
+
+        # Add outro text using PIL for precise control
         try:
-            text_clip = TextClip(
-                text="Thank you for watching!\n\nSubscribe for more tech news",
-                font_size=60,
-                color="white",
-                font="Arial",
-                size=(config.width * 0.8, None),
-            )
-            text_clip = text_clip.with_duration(config.outro_duration)
-            text_clip = text_clip.with_position("center")
-            text_clip = text_clip.with_effects([vfx.FadeIn(0.5)])
+            from PIL import Image, ImageDraw, ImageFont
+            import numpy as np
 
-            outro_clip = CompositeVideoClip([outro_clip, text_clip])
+            # Create transparent overlay
+            overlay = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+
+            # Load fonts
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 42)
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+
+            # Draw "AI ON" in center
+            text1 = "AI ON"
+            bbox1 = draw.textbbox((0, 0), text1, font=font_large)
+            text1_width = bbox1[2] - bbox1[0]
+            text1_height = bbox1[3] - bbox1[1]
+            x1 = (config.width - text1_width) // 2
+            y1 = (config.height - text1_height) // 2 - 80  # Above center
+
+            # Draw stroke
+            stroke_width = 4
+            for adj_x in range(-stroke_width, stroke_width+1):
+                for adj_y in range(-stroke_width, stroke_width+1):
+                    draw.text((x1+adj_x, y1+adj_y), text1, font=font_large, fill=(0, 0, 0, 255))
+            draw.text((x1, y1), text1, font=font_large, fill=(255, 255, 255, 255))
+
+            # Draw "Thank you for watching!"
+            text2 = "Thank you for watching!"
+            bbox2 = draw.textbbox((0, 0), text2, font=font_medium)
+            text2_width = bbox2[2] - bbox2[0]
+            text2_height = bbox2[3] - bbox2[1]
+            x2 = (config.width - text2_width) // 2
+            y2 = y1 + text1_height + 50
+
+            stroke_width = 2
+            for adj_x in range(-stroke_width, stroke_width+1):
+                for adj_y in range(-stroke_width, stroke_width+1):
+                    draw.text((x2+adj_x, y2+adj_y), text2, font=font_medium, fill=(0, 0, 0, 255))
+            draw.text((x2, y2), text2, font=font_medium, fill=(255, 255, 255, 255))
+
+            # Draw subscribe message
+            text3 = "Like & Subscribe for more AI & Tech news!"
+            bbox3 = draw.textbbox((0, 0), text3, font=font_small)
+            text3_width = bbox3[2] - bbox3[0]
+            x3 = (config.width - text3_width) // 2
+            y3 = y2 + text2_height + 30
+
+            stroke_width = 2
+            for adj_x in range(-stroke_width, stroke_width+1):
+                for adj_y in range(-stroke_width, stroke_width+1):
+                    draw.text((x3+adj_x, y3+adj_y), text3, font=font_small, fill=(0, 0, 0, 255))
+            draw.text((x3, y3), text3, font=font_small, fill=(255, 255, 255, 255))
+
+            # Convert to clip
+            overlay_array = np.array(overlay)
+            text_clip = ImageClip(overlay_array).with_duration(config.outro_duration)
+            text_clip = text_clip.with_effects([vfx.FadeIn(0.3)])
+
+            outro_clip = CompositeVideoClip([outro_bg, text_clip])
+            self.logger.info("AI ON outro created with PIL text overlay")
+
         except Exception as e:
             self.logger.warning(f"Failed to add outro text: {e}")
+            outro_clip = outro_bg
 
         return outro_clip
 

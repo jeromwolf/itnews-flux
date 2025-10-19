@@ -70,6 +70,11 @@ class TTSGenerator(BaseAIService):
 
         Raises:
             GenerationError: If generation fails
+
+        Note:
+            OpenAI TTS currently best supports English.
+            Korean text will be pronounced with English phonetics.
+            For better Korean TTS, consider Google Cloud TTS or Azure TTS.
         """
         if not text or not text.strip():
             raise GenerationError("Text cannot be empty")
@@ -81,9 +86,17 @@ class TTSGenerator(BaseAIService):
         if isinstance(voice, str):
             voice = TTSVoice(voice)
 
+        # Detect Korean text and warn
+        has_korean = self._detect_korean(text)
+        if has_korean:
+            self.logger.warning(
+                "Korean text detected. OpenAI TTS may not pronounce Korean correctly. "
+                "Consider using Google Cloud TTS or Azure TTS for better Korean support."
+            )
+
         self.logger.info(
             f"Generating audio: {len(text)} chars, "
-            f"voice={voice.value}, speed={speed}, hd={use_hd}"
+            f"voice={voice.value}, speed={speed}, hd={use_hd}, korean={has_korean}"
         )
 
         # Check cache
@@ -162,6 +175,23 @@ class TTSGenerator(BaseAIService):
         except Exception as e:
             self.logger.error(f"TTS generation failed: {e}", exc_info=True)
             raise GenerationError(f"TTS generation failed: {e}") from e
+
+    def _detect_korean(self, text: str) -> bool:
+        """
+        Detect if text contains Korean characters.
+
+        Args:
+            text: Text to check
+
+        Returns:
+            True if Korean characters found
+        """
+        # Korean Unicode ranges: Hangul Syllables (AC00-D7AF) and Hangul Jamo (1100-11FF)
+        for char in text:
+            code = ord(char)
+            if (0xAC00 <= code <= 0xD7AF) or (0x1100 <= code <= 0x11FF):
+                return True
+        return False
 
     def _estimate_duration(self, text: str, speed: float) -> float:
         """

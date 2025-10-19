@@ -45,6 +45,7 @@ class ScriptGenerator(BaseAIService):
         style: ScriptStyle | str = ScriptStyle.PROFESSIONAL,
         target_duration: int = 60,  # 60 seconds per news
         include_vocabulary: bool = True,
+        is_first_segment: bool = False,  # 첫 번째 세그먼트 여부
     ) -> GeneratedScript:
         """
         Generate news script from article.
@@ -54,6 +55,7 @@ class ScriptGenerator(BaseAIService):
             style: Script style (enum or string)
             target_duration: Target duration in seconds
             include_vocabulary: Extract key vocabulary
+            is_first_segment: Whether this is the first segment (includes greeting)
 
         Returns:
             Generated script
@@ -77,7 +79,7 @@ class ScriptGenerator(BaseAIService):
             return GeneratedScript(**cached)
 
         # Build prompt
-        prompt = self._build_prompt(news, style, target_duration, include_vocabulary)
+        prompt = self._build_prompt(news, style, target_duration, include_vocabulary, is_first_segment)
 
         # Generate script
         try:
@@ -192,6 +194,7 @@ Style Guidelines:
         style: ScriptStyle,
         target_duration: int,
         include_vocabulary: bool,
+        is_first_segment: bool = False,
     ) -> str:
         """
         Build prompt for script generation.
@@ -201,6 +204,7 @@ Style Guidelines:
             style: Script style
             target_duration: Target duration
             include_vocabulary: Include vocabulary
+            is_first_segment: Whether this is the first segment
 
         Returns:
             Prompt string
@@ -237,7 +241,22 @@ Return a JSON object with:
 {vocab_instruction}
 
 Example structure for the script:
-"Good morning, tech enthusiasts! Today we're looking at [topic]. [Main content with context and explanation]. This development could mean [impact]. That's all for this story. Stay tuned!"
+"""
+
+        # 첫 번째 세그먼트에만 인사말 추가
+        if is_first_segment:
+            prompt += """
+First segment greeting:
+"안녕하세요, 기술 애호가 여러분! (Good morning, tech enthusiasts!) Today we're looking at [topic]..."
+
+Include a warm greeting ONLY for the first news segment.
+"""
+        else:
+            prompt += """
+Subsequent segments (NO greeting):
+"Next up, [topic]. [Main content with context and explanation]. This development could mean [impact]. That's all for this story."
+
+DO NOT include greetings like "Good morning" or "안녕하세요" for segments after the first one. Start directly with the news content.
 """
 
         return prompt

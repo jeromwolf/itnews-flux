@@ -23,6 +23,7 @@ from src.core.logging import get_logger, log_execution_time
 from src.news.crawler.sources.techcrunch import create_techcrunch_crawler
 from src.news.crawler.sources.theverge import create_theverge_crawler
 from src.video import VideoProject, VideoProjectConfig, VideoSegment, create_video_composer
+from src.video.image_selector import create_image_selector
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,7 @@ class PipelineConfig(BaseModel):
     script_style: str = Field(default="professional", description="Script style")
     segment_duration: int = Field(default=60, description="Target duration per segment")
     image_quality: str = Field(default="standard", description="Image quality (standard/hd)")
+    use_image_pool: bool = Field(default=True, description="Use pre-generated image pool")
     tts_voice: str = Field(default="alloy", description="TTS voice")
 
     # Video production
@@ -96,7 +98,14 @@ class ContentPipeline:
 
         # Initialize services
         self.script_gen = create_script_generator()
-        self.image_gen = create_image_generator()
+
+        # Use ImageSelector instead of direct ImageGenerator
+        # This allows cost savings through image pool
+        self.image_selector = create_image_selector(
+            use_pool=self.config.use_image_pool,
+            fallback_to_generation=True,
+        )
+
         self.tts_gen = create_tts_generator()
         self.video_composer = create_video_composer(
             output_dir=self.config.output_dir / "videos"
@@ -201,22 +210,30 @@ class ContentPipeline:
                 self.logger.info(f"[{i}/{len(news_list)}] Processing: {news.title[:50]}...")
 
                 # Generate script
+                # 첫 번째 뉴스에만 인사말 포함 (is_first_segment 플래그 전달)
                 script = self.script_gen.generate(
                     news,
                     style=self.config.script_style,
                     target_duration=self.config.segment_duration,
+                    is_first_segment=(i == 1),  # 첫 번째 세그먼트인지 표시
                 )
                 self.logger.info(f"  Script: {script.word_count} words, ${script.total_cost:.4f}")
 
-                # Generate image
-                image = self.image_gen.generate(news, quality=self.config.image_quality)
-                self.logger.info(f"  Image: {image.local_path}, ${image.total_cost:.4f}")
+                # Get image (from pool or generate)
+                image = self.image_selector.get_image_for_news(
+                    news,
+                    quality=self.config.image_quality,
+                )
+                source = "pool" if image.from_pool else "generated"
+                self.logger.info(f"  Image: {image.local_path} ({source}), ${image.total_cost:.4f}")
 
                 # Generate audio
+                # 한글 번역이 있으면 한글로, 없으면 영어로 TTS 생성
+                tts_text = script.korean_translation if script.korean_translation else script.english_script
                 audio = self.tts_gen.generate(
-                    script.english_script, voice=self.config.tts_voice
+                    tts_text, voice=self.config.tts_voice
                 )
-                self.logger.info(f"  Audio: {audio.duration:.1f}s, ${audio.total_cost:.4f}")
+                self.logger.info(f"  Audio: {audio.duration:.1f}s, ${audio.total_cost:.4f} (language: {'Korean' if script.korean_translation else 'English'})")
 
                 # Create segment
                 segment = VideoSegment(
@@ -234,6 +251,18 @@ class ContentPipeline:
 
             except Exception as e:
                 self.logger.error(f"Failed to generate content for segment {i}: {e}", exc_info=True)
+
+        # Log image pool statistics
+        pool_status = self.image_selector.get_pool_status()
+        self.logger.info(
+            f"\n📊 Image Pool Statistics:\n"
+            f"  Pool usage: {pool_status['pool_usage_count']}/{pool_status['total_requests']} "
+            f"({pool_status['pool_usage_rate']:.0%})\n"
+            f"  Savings: ${pool_status['total_savings']:.4f}\n"
+            f"  Generation cost: ${pool_status['total_generation_cost']:.4f}\n"
+            f"  Categories in pool: {pool_status['categories_in_pool']}\n"
+            f"  Total pool images: {pool_status['total_pool_images']}"
+        )
 
         return segments
 

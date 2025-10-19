@@ -94,7 +94,7 @@ class GeneratedScript(BaseModel):
 
 
 class GeneratedImage(BaseModel):
-    """Generated image from DALL-E 3."""
+    """Generated image from DALL-E 3 or image pool."""
 
     # Image info
     url: Optional[HttpUrl] = Field(None, description="Image URL (temporary)")
@@ -110,8 +110,9 @@ class GeneratedImage(BaseModel):
     style: ImageStyle = Field(ImageStyle.VIVID, description="Image style")
     quality: str = Field("hd", description="Image quality (standard/hd)")
 
-    model: str = Field("dall-e-3", description="Model used")
+    model: str = Field("dall-e-3", description="Model used (dall-e-3 or pool)")
     total_cost: float = Field(0.0, description="Total cost (USD)")
+    from_pool: bool = Field(False, description="Image from pre-generated pool")
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

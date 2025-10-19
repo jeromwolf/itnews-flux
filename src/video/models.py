@@ -162,6 +162,24 @@ class VideoProjectConfig(BaseModel):
     secondary_color: str = Field("#003d7a", description="Secondary brand color")
     background_color: str = Field("#ffffff", description="Background color")
 
+    # Custom intro/outro images
+    intro_image_path: Optional[Path] = Field(
+        None,
+        description="Custom intro background image path"
+    )
+    outro_image_path: Optional[Path] = Field(
+        None,
+        description="Custom outro background image path"
+    )
+    use_custom_intro: bool = Field(
+        True,
+        description="Use custom intro image if available"
+    )
+    use_custom_outro: bool = Field(
+        True,
+        description="Use custom outro image if available"
+    )
+
     @property
     def width(self) -> int:
         """Get video width in pixels."""
