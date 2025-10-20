@@ -21,8 +21,8 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind to (default: 8000)",
+        default=8129,
+        help="Port to bind to (default: 8129)",
     )
     parser.add_argument(
         "--reload",
