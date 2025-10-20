@@ -699,15 +699,20 @@ async def _generate_video(video_id: str) -> None:
             try:
                 logger.info("Generating thumbnail...")
                 first_segment = segments[0]
-                thumbnail_path = await loop.run_in_executor(
-                    None,
-                    pipeline.thumbnail_generator.generate,
-                    first_segment.title,
-                    Path(first_segment.image.image_path),
-                    None,  # output_path
-                    f"Tech News • {datetime.now().strftime('%B %d, %Y')}",  # subtitle
-                )
-                logger.info(f"Thumbnail generated: {thumbnail_path}")
+                # GeneratedImage uses local_path, not image_path
+                image_path = first_segment.image.local_path
+                if image_path and Path(image_path).exists():
+                    thumbnail_path = await loop.run_in_executor(
+                        None,
+                        pipeline.thumbnail_generator.generate,
+                        first_segment.title,
+                        Path(image_path),
+                        None,  # output_path
+                        f"Tech News • {datetime.now().strftime('%B %d, %Y')}",  # subtitle
+                    )
+                    logger.info(f"Thumbnail generated: {thumbnail_path}")
+                else:
+                    logger.warning(f"Image path not found for thumbnail generation")
             except Exception as e:
                 logger.warning(f"Thumbnail generation failed: {e}")
 
