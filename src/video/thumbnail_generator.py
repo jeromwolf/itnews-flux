@@ -39,7 +39,7 @@ class ThumbnailConfig(BaseModel):
     # Text box
     text_box_color: str = Field("#1E40AF", description="Text box background color (hex)")
     text_box_opacity: float = Field(
-        0.85, ge=0.0, le=1.0, description="Text box opacity"
+        0.95, ge=0.0, le=1.0, description="Text box opacity"
     )
     text_box_padding: int = Field(40, description="Text box padding (pixels)")
     text_box_margin: int = Field(60, description="Text box margin from edges (pixels)")
