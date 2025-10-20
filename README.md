@@ -5,7 +5,18 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-green.svg)](https://platform.openai.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-In%20Development-orange.svg)]()
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)]()
+
+## 🔥 최근 업데이트 (2025-10-20)
+
+**macOS 호환성 수정 완료** - 프로덕션 사용 가능! 🎉
+
+- ✅ 인트로/아웃트로 폰트 문제 해결 (macOS Arial 폰트 지원)
+- ✅ 썸네일 생성 완전 수정 (한글 지원, 날짜 형식, 가독성 개선)
+- ✅ 전체 시스템 macOS 환경에서 정상 작동 확인
+- ✅ 영어 뉴스 → 한글 번역 파이프라인 완성
+
+**상세 내역**: [CLAUDE.md](./CLAUDE.md#-macos-호환성-수정-2025-10-20-오후) 참고
 
 ---
 

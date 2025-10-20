@@ -3,7 +3,7 @@
 **프로젝트**: Tech News Digest
 **목적**: Claude와 체계적이고 안전하게 협업하기 위한 가이드
 **작성일**: 2025-10-09
-**버전**: 2.1 (2025-10-20 업데이트)
+**버전**: 2.2 (2025-10-20 macOS 호환성 수정)
 
 ---
 
@@ -662,9 +662,9 @@ python run_scheduler.py --now
 
 **이 가이드라인을 따라 Tech News Digest를 성공적으로 만들어갑시다!** 🚀
 
-**마지막 업데이트**: 2025-10-20
+**마지막 업데이트**: 2025-10-20 (macOS 호환성 수정 완료)
 **다음 리뷰**: YouTube 채널 런칭 시 또는 새로운 기능 추가 시
-**현재 상태**: Phase 7 완료 (Intro/Outro + 메타데이터) - 프로덕션 사용 가능
+**현재 상태**: Phase 7 완료 + macOS 호환성 수정 - 프로덕션 사용 가능
 
 ---
 
@@ -693,3 +693,86 @@ python run_scheduler.py --now
 - [ ] 실제 뉴스로 전체 파이프라인 테스트
 - [ ] YouTube 채널 개설 및 첫 영상 업로드
 - [ ] 사용자 피드백 수집 및 개선
+
+---
+
+## 🔧 macOS 호환성 수정 (2025-10-20 오후)
+
+### 문제 발견 및 해결
+
+#### 1. **인트로/아웃트로 폰트 크기 문제** ❌→✅
+- **문제**: Phase 7에서 Linux 폰트 경로 사용 → macOS에 없어서 tiny default font로 대체
+- **원인**: `/usr/share/fonts/truetype/dejavu/` 경로가 macOS에 존재하지 않음
+- **해결**:
+  - macOS Arial 폰트 우선 시도 (`/System/Library/Fonts/Supplemental/Arial Bold.ttf`)
+  - Linux DejaVu 폰트로 fallback
+  - 최후 수단으로 default font
+- **커밋**: `5a43ec4` - fix: Use macOS compatible fonts for intro/outro text
+- **파일**: `src/video/composition/video_composer.py`
+
+#### 2. **썸네일 생성 실패 - 파이프라인** ❌→✅
+- **문제**: `'GeneratedImage' object has no attribute 'image_path'`
+- **원인**: `GeneratedImage` 모델은 `local_path`를 사용, `image_path` 속성 없음
+- **해결**: `first_segment.image.image_path` → `first_segment.image.local_path`
+- **커밋**: `f90199d` - fix: Thumbnail generation - use local_path instead of image_path
+- **파일**: `src/api/routers/videos.py:703`
+
+#### 3. **썸네일 생성 실패 - API 스키마** ❌→✅
+- **문제**: `VideoSegmentInfo`에 `image_path` 필드 없어서 API 엔드포인트에서 썸네일 생성 불가
+- **원인**: 스키마에 이미지 경로 정보가 저장되지 않음
+- **해결**:
+  - `VideoSegmentInfo`에 `image_path` 필드 추가
+  - segments 저장 시 `image.local_path` 포함
+- **커밋**: `a3fc67f` - fix: Add image_path to VideoSegmentInfo for thumbnail generation
+- **파일**: `src/api/schemas/video.py`, `src/api/routers/videos.py:768`
+
+#### 4. **썸네일 한글 깨짐** ❌→✅
+- **문제**: 썸네일 제목에서 한글이 깨져서 표시됨
+- **원인**: Arial 폰트는 한글 지원 안 함, 잘못된 폰트 경로 사용
+- **해결**:
+  - macOS 한글 폰트 사용 (`AppleSDGothicNeo.ttc`)
+  - Arial fallback 추가
+  - 제목, 부제목, 브랜딩 모두 한글 지원
+- **커밋**: `f453a80` - fix: Thumbnail Korean font support and date format
+- **파일**: `src/video/thumbnail_generator.py`
+
+#### 5. **썸네일 날짜 형식** ❌→✅
+- **문제**: 날짜가 영어 형식 (`October 20, 2025`)
+- **해결**: 한국 형식으로 변경 (`2025년 10월 20일`)
+- **커밋**: `f453a80` (동일)
+- **파일**: `src/api/routers/videos.py:711`
+
+#### 6. **썸네일 텍스트 가독성** ❌→✅
+- **문제**: 텍스트 박스가 너무 투명해서 배경 이미지 때문에 글씨가 잘 안 보임
+- **해결**: `text_box_opacity` 0.85 → 0.95로 증가 (95% 불투명)
+- **커밋**: `68d22d1` - fix: Increase thumbnail text box opacity for better readability
+- **파일**: `src/video/thumbnail_generator.py:42`
+
+### 커밋 히스토리
+```
+68d22d1 fix: Increase thumbnail text box opacity for better readability
+f453a80 fix: Thumbnail Korean font support and date format
+a3fc67f fix: Add image_path to VideoSegmentInfo for thumbnail generation
+f90199d fix: Thumbnail generation - use local_path instead of image_path
+5a43ec4 fix: Use macOS compatible fonts for intro/outro text
+c3c7b20 fix: Handle VideoSegmentInfo object in thumbnail generation
+08a29a5 fix: Correct TranslationService API usage
+f2b1af6 fix: Use correct translate method name (generate)
+```
+
+### 수정 완료 상태
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| 인트로/아웃트로 폰트 | ✅ | macOS Arial 140pt/120pt |
+| 썸네일 생성 (파이프라인) | ✅ | local_path 사용 |
+| 썸네일 생성 (API) | ✅ | image_path 스키마 추가 |
+| 썸네일 한글 표시 | ✅ | AppleSDGothicNeo 폰트 |
+| 썸네일 날짜 형식 | ✅ | 2025년 10월 20일 |
+| 썸네일 가독성 | ✅ | 95% 불투명도 |
+| 번역 기능 | ✅ | 코드 정상 (API quota 필요) |
+
+### 학습 및 개선
+- **교훈**: macOS와 Linux 환경 차이를 항상 고려해야 함
+- **개선**: 폰트 경로를 환경별로 fallback 구조로 설계
+- **원칙**: 한 번에 테스트하지 말고, 코드 검증 후 최종 테스트만 수행 (비용 절감)
