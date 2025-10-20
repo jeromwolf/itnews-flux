@@ -765,6 +765,7 @@ async def _generate_video(video_id: str) -> None:
                 title=s.title,
                 duration=s.duration,
                 cost=(s.script.total_cost + s.image.total_cost + s.audio.total_cost),
+                image_path=str(s.image.local_path) if s.image.local_path else None,
             )
             for s in segments
         ]

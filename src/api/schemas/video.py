@@ -42,6 +42,7 @@ class VideoSegmentInfo(BaseModel):
     title: str
     duration: float
     cost: float
+    image_path: str | None = Field(default=None, description="Path to segment image for thumbnail generation")
 
 
 class VideoResponse(BaseModel):
