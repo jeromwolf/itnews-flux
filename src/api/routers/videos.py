@@ -708,7 +708,7 @@ async def _generate_video(video_id: str) -> None:
                         first_segment.title,
                         Path(image_path),
                         None,  # output_path
-                        f"Tech News • {datetime.now().strftime('%B %d, %Y')}",  # subtitle
+                        f"Tech News • {datetime.now().strftime('%Y년 %m월 %d일')}",  # subtitle (Korean format)
                     )
                     logger.info(f"Thumbnail generated: {thumbnail_path}")
                 else:

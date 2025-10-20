@@ -293,15 +293,29 @@ class ThumbnailGenerator:
             title: News title
             subtitle: Subtitle text (optional)
         """
-        # Load fonts
+        # Load fonts (macOS compatible with Korean support)
         try:
-            title_font = ImageFont.truetype("Arial", self.config.title_font_size)
-            subtitle_font = ImageFont.truetype("Arial", self.config.subtitle_font_size)
+            # Try macOS Korean fonts first
+            title_font = ImageFont.truetype(
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc", self.config.title_font_size
+            )
+            subtitle_font = ImageFont.truetype(
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc", self.config.subtitle_font_size
+            )
         except OSError:
-            # Fallback to default font
-            logger.warning("Arial font not found, using default font")
-            title_font = ImageFont.load_default()
-            subtitle_font = ImageFont.load_default()
+            try:
+                # Fallback to macOS Arial
+                title_font = ImageFont.truetype(
+                    "/System/Library/Fonts/Supplemental/Arial.ttf", self.config.title_font_size
+                )
+                subtitle_font = ImageFont.truetype(
+                    "/System/Library/Fonts/Supplemental/Arial.ttf", self.config.subtitle_font_size
+                )
+            except OSError:
+                # Last resort: default font
+                logger.warning("No suitable fonts found, using default font")
+                title_font = ImageFont.load_default()
+                subtitle_font = ImageFont.load_default()
 
         # Wrap title text
         max_width = self.config.width - 2 * (
@@ -402,9 +416,18 @@ class ThumbnailGenerator:
             draw: ImageDraw context
         """
         try:
-            brand_font = ImageFont.truetype("Arial", self.config.brand_font_size)
+            # Try macOS Korean font first
+            brand_font = ImageFont.truetype(
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc", self.config.brand_font_size
+            )
         except OSError:
-            brand_font = ImageFont.load_default()
+            try:
+                # Fallback to macOS Arial
+                brand_font = ImageFont.truetype(
+                    "/System/Library/Fonts/Supplemental/Arial Bold.ttf", self.config.brand_font_size
+                )
+            except OSError:
+                brand_font = ImageFont.load_default()
 
         # Calculate position
         bbox = draw.textbbox((0, 0), self.config.brand_text, font=brand_font)
