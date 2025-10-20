@@ -101,7 +101,7 @@ async def get_news(
         for news in news_list:
             try:
                 # Translate title
-                translated_title = translator.translate(
+                translated_title = translator.generate(
                     text=news.title,
                     source_lang="en",
                     target_lang="ko"
@@ -110,7 +110,7 @@ async def get_news(
 
                 # Translate summary
                 if news.summary:
-                    translated_summary = translator.translate(
+                    translated_summary = translator.generate(
                         text=news.summary,
                         source_lang="en",
                         target_lang="ko"
