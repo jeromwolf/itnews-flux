@@ -280,8 +280,15 @@ async def generate_thumbnail_for_video(video_id: str) -> dict:
         if video_data.get("segments"):
             # Get first segment's image
             first_segment = video_data["segments"][0]
-            if first_segment.get("image_path"):
-                bg_path = Path(first_segment["image_path"])
+            # Handle both dict and Pydantic model
+            if isinstance(first_segment, dict):
+                image_path = first_segment.get("image_path")
+            else:
+                # Pydantic model - use attribute access
+                image_path = getattr(first_segment, "image_path", None)
+
+            if image_path:
+                bg_path = Path(image_path)
                 if bg_path.exists():
                     background_image = bg_path
 
