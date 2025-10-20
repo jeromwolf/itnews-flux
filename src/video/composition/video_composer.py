@@ -292,13 +292,20 @@ class VideoComposer:
             overlay = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 0))
             draw = ImageDraw.Draw(overlay)
 
-            # Use default font with large size
+            # Use default font with large size (macOS compatible)
             try:
-                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 140)
-                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 48)
+                # Try macOS fonts first
+                font_large = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 140)
+                font_medium = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 48)
             except:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
+                try:
+                    # Fallback to Linux fonts
+                    font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 140)
+                    font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 48)
+                except:
+                    # Last resort: default font
+                    font_large = ImageFont.load_default()
+                    font_medium = ImageFont.load_default()
 
             # Draw "AI ON" in center
             text1 = "AI ON"
@@ -413,15 +420,23 @@ class VideoComposer:
             overlay = Image.new('RGBA', (config.width, config.height), (0, 0, 0, 0))
             draw = ImageDraw.Draw(overlay)
 
-            # Load fonts
+            # Load fonts (macOS compatible)
             try:
-                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
-                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 42)
-                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+                # Try macOS fonts first
+                font_large = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 120)
+                font_medium = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 42)
+                font_small = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 36)
             except:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
+                try:
+                    # Fallback to Linux fonts
+                    font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+                    font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 42)
+                    font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+                except:
+                    # Last resort: default font
+                    font_large = ImageFont.load_default()
+                    font_medium = ImageFont.load_default()
+                    font_small = ImageFont.load_default()
 
             # Draw "AI ON" in center
             text1 = "AI ON"
