@@ -91,6 +91,37 @@ async def get_news(
         _cache_timestamp = datetime.now()
 
     # Convert to response format
+    news_list = list(_news_cache.values())[:limit]
+
+    # Translate if requested
+    if translate:
+        logger.info("Translating news to Korean...")
+        translator = get_translator()
+
+        for news in news_list:
+            try:
+                # Translate title
+                translated_title = translator.translate(
+                    text=news.title,
+                    source_lang="en",
+                    target_lang="ko"
+                )
+                news.title = translated_title.translated_text
+
+                # Translate summary
+                if news.summary:
+                    translated_summary = translator.translate(
+                        text=news.summary,
+                        source_lang="en",
+                        target_lang="ko"
+                    )
+                    news.summary = translated_summary.translated_text
+
+                logger.debug(f"Translated: {news.title[:50]}...")
+            except Exception as e:
+                logger.warning(f"Translation failed for {news.title[:30]}: {e}")
+                # Keep original English text if translation fails
+
     news_responses = [
         NewsResponse(
             id=f"{news.source.value}-{str(news.url).split('/')[-1][:20]}",
@@ -103,7 +134,7 @@ async def get_news(
             score=news.score,
             image_url=None,  # Image URLs not currently extracted
         )
-        for news in list(_news_cache.values())[:limit]
+        for news in news_list
     ]
 
     return NewsListResponse(

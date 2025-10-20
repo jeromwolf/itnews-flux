@@ -82,7 +82,7 @@ async function loadNews() {
             </div>
         `;
 
-        const data = await API.News.getNews({ sources, max_age_hours: maxAge, limit });
+        const data = await API.News.getNews({ sources, max_age_hours: maxAge, limit, translate: true });
         allNews = data.news;
 
         document.getElementById('news-count').textContent = `${data.total} articles`;
