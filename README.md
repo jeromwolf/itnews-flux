@@ -49,14 +49,12 @@
 ## ✨ 주요 기능
 
 ### 1. 뉴스 수집 및 선택 ✅ **완료**
-- **멀티 소스 크롤링**:
-  - 🇺🇸 영어: TechCrunch, The Verge
-  - 🇰🇷 한국어: ETNews (전자신문), ZDNet Korea 🆕
+- **영어 뉴스 소스**: TechCrunch, The Verge
+- **AI 번역**: GPT-4o-mini 기반 영어→한글 자동 번역 🆕
 - **스마트 선택**: 점수 기반 랭킹 + 다양성 필터
 - **IT 중심**: IT/Tech 뉴스 75%, 경제 뉴스 25%
 - **15개 카테고리**: AI/ML (1.5x), Software (1.3x), Startup (1.2x), Security (1.2x) 등
 - **자동 점수 계산**: 중요도 × 카테고리 가중치 × 최신성 × 길이
-- **AI 번역**: GPT-4o-mini 기반 영어↔한글 자동 번역 🆕
 
 ### 2. AI 콘텐츠 생성 ✅ **완료**
 - **GPT-4o 스크립트**: 전문 앵커 스타일 뉴스 스크립트 자동 생성 (131단어, 60초)
@@ -105,7 +103,7 @@
 
 ### AI/ML
 - **OpenAI GPT-4o**: 스크립트 생성
-- **OpenAI GPT-4o-mini**: 번역 (영어 ↔ 한글) 🆕
+- **OpenAI GPT-4o-mini**: 영어→한글 자동 번역 🆕
 - **OpenAI DALL-E 3**: 이미지 생성
 - **OpenAI TTS-1**: 음성 생성
 
@@ -232,10 +230,7 @@ REDIS_URL=redis://localhost:6379
 # 영어 뉴스 크롤러 테스트 (TechCrunch + The Verge)
 python test_crawler.py
 
-# 한국 뉴스 크롤러 테스트 (ETNews + ZDNet Korea) 🆕
-python test_korean_crawler.py
-
-# 번역 서비스 테스트 🆕
+# 번역 서비스 테스트 (영어→한글) 🆕
 python test_translator.py
 
 # AI 서비스 통합 테스트
@@ -349,16 +344,14 @@ mypy src/
 - [x] BaseCrawler 구현 (재사용 가능한 추상 클래스)
 - [x] TechCrunch 크롤러 (AI, Startup, Funding)
 - [x] The Verge 크롤러 (Mobile, Hardware, Reviews)
-- [x] ETNews 크롤러 (한국 IT 뉴스) 🆕
-- [x] ZDNet Korea 크롤러 (한국 IT 뉴스) 🆕
 - [x] 뉴스 선택 알고리즘 (IT/Tech 75%, 다양성 보장)
-- [x] 테스트 스크립트 (test_crawler.py, test_korean_crawler.py)
+- [x] 테스트 스크립트 (test_crawler.py)
 
 ### Phase 2: AI 콘텐츠 생성 ✅ **완료!**
 - [x] GPT-4o 스크립트 생성 (Professional/Casual/Educational 스타일)
 - [x] DALL-E 3 이미지 생성 (16:9, 1792x1024)
 - [x] OpenAI TTS 음성 생성 (6가지 음성 지원)
-- [x] AI 번역 서비스 (GPT-4o-mini, 영어↔한글) 🆕
+- [x] AI 번역 서비스 (GPT-4o-mini, 영어→한글) 🆕
 - [x] 캐싱 시스템 (MD5 해시 기반, 비용 절감)
 
 ### Phase 3: 영상 제작 ✅ **완료!**

@@ -11,7 +11,7 @@ def create_news_crawler(source: str) -> "BaseCrawler":
     Create a news crawler for the specified source.
 
     Args:
-        source: News source name (e.g., "etnews", "zdnet_kr", "techcrunch", "theverge")
+        source: News source name (e.g., "techcrunch", "theverge")
 
     Returns:
         Crawler instance
@@ -21,19 +21,8 @@ def create_news_crawler(source: str) -> "BaseCrawler":
     """
     source = source.lower()
 
-    # Korean IT news sources
-    if source == "etnews":
-        from .sources.etnews import create_etnews_crawler
-
-        return create_etnews_crawler()
-
-    elif source == "zdnet_kr":
-        from .sources.zdnet_kr import create_zdnet_kr_crawler
-
-        return create_zdnet_kr_crawler()
-
-    # English IT news sources
-    elif source == "techcrunch":
+    # English IT news sources (translated to Korean via GPT-4o-mini)
+    if source == "techcrunch":
         from .sources.techcrunch import create_techcrunch_crawler
 
         return create_techcrunch_crawler()
@@ -46,7 +35,7 @@ def create_news_crawler(source: str) -> "BaseCrawler":
     else:
         raise ValueError(
             f"Unknown news source: {source}. "
-            f"Supported sources: etnews, zdnet_kr, techcrunch, theverge"
+            f"Supported sources: techcrunch, theverge"
         )
 
 

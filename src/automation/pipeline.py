@@ -24,6 +24,7 @@ from src.news.crawler.sources.techcrunch import create_techcrunch_crawler
 from src.news.crawler.sources.theverge import create_theverge_crawler
 from src.video import VideoProject, VideoProjectConfig, VideoSegment, create_video_composer
 from src.video.image_selector import create_image_selector
+from src.video.thumbnail_generator import ThumbnailConfig, ThumbnailGenerator
 
 logger = get_logger(__name__)
 
@@ -54,6 +55,8 @@ class PipelineConfig(BaseModel):
 
     # YouTube upload
     enable_youtube_upload: bool = Field(default=False, description="Enable YouTube upload")
+    generate_thumbnail: bool = Field(default=True, description="Generate YouTube thumbnail")
+    thumbnail_brand_text: str = Field(default="AI ON", description="Thumbnail brand text")
 
     # Output
     output_dir: Path = Field(default=Path("output"), description="Output directory")
@@ -65,6 +68,7 @@ class PipelineResult(BaseModel):
     success: bool
     project_id: str
     video_path: Optional[Path] = None
+    thumbnail_path: Optional[Path] = None
     youtube_url: Optional[str] = None
 
     # Metrics
@@ -110,6 +114,15 @@ class ContentPipeline:
         self.video_composer = create_video_composer(
             output_dir=self.config.output_dir / "videos"
         )
+
+        # Thumbnail generator
+        self.thumbnail_generator = None
+        if self.config.generate_thumbnail:
+            thumbnail_config = ThumbnailConfig(
+                brand_text=self.config.thumbnail_brand_text
+            )
+            self.thumbnail_generator = ThumbnailGenerator(config=thumbnail_config)
+            self.logger.info("Thumbnail generator initialized")
 
         # YouTube uploader (optional)
         self.youtube_uploader = None
@@ -345,7 +358,25 @@ class ContentPipeline:
                 result.total_cost += segment.audio.total_cost
                 result.total_duration += segment.duration
 
-            # Step 4: Upload to YouTube (if enabled)
+            # Step 4: Generate thumbnail (if enabled)
+            thumbnail_path = None
+            if self.thumbnail_generator and segments:
+                try:
+                    self.logger.info("Generating YouTube thumbnail...")
+                    # Use first segment's title and image for thumbnail
+                    first_segment = segments[0]
+                    thumbnail_path = self.thumbnail_generator.generate(
+                        title=first_segment.title,
+                        background_image_path=Path(first_segment.image.image_path),
+                        subtitle=f"Tech News • {datetime.now().strftime('%B %d, %Y')}",
+                    )
+                    result.thumbnail_path = thumbnail_path
+                    self.logger.info(f"Thumbnail generated: {thumbnail_path}")
+                except Exception as e:
+                    self.logger.warning(f"Thumbnail generation failed: {e}", exc_info=True)
+                    result.errors.append(f"Thumbnail generation failed: {e}")
+
+            # Step 5: Upload to YouTube (if enabled)
             if self.youtube_uploader:
                 try:
                     self.logger.info("Uploading to YouTube...")
@@ -354,8 +385,20 @@ class ContentPipeline:
                         video_path=video_path,
                         topics=topics,
                     )
+                    video_id = upload_result["video_id"]
                     result.youtube_url = upload_result["video_url"]
                     self.logger.info(f"YouTube upload complete: {result.youtube_url}")
+
+                    # Upload thumbnail (if generated)
+                    if thumbnail_path and thumbnail_path.exists():
+                        try:
+                            self.logger.info("Uploading thumbnail to YouTube...")
+                            self.youtube_uploader.set_thumbnail(video_id, thumbnail_path)
+                            self.logger.info("Thumbnail uploaded successfully")
+                        except Exception as e:
+                            self.logger.warning(f"Thumbnail upload failed: {e}", exc_info=True)
+                            result.errors.append(f"Thumbnail upload failed: {e}")
+
                 except Exception as e:
                     self.logger.error(f"YouTube upload failed: {e}", exc_info=True)
                     result.errors.append(f"YouTube upload failed: {e}")

@@ -82,23 +82,6 @@ async def get_news(
         # Sort by score (descending)
         all_news.sort(key=lambda x: x.score, reverse=True)
 
-        # Translate if requested
-        if translate:
-            translator = get_translator()
-            for news in all_news[:limit]:
-                try:
-                    result = translator.translate_news(
-                        title=news.title, summary=news.summary or "", preserve_technical_terms=True
-                    )
-                    # Update news with translated content
-                    news.title = result["title"]
-                    if result["summary"]:
-                        news.summary = result["summary"]
-                    logger.debug(f"Translated: {news.title}")
-                except Exception as e:
-                    logger.warning(f"Translation failed for '{news.title}': {e}")
-                    # Keep original if translation fails
-
         # Update cache
         for news in all_news[:limit]:
             # Generate unique ID

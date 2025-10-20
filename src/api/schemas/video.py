@@ -52,6 +52,7 @@ class VideoResponse(BaseModel):
     title: str
     created_at: datetime
     video_path: str | None = None
+    thumbnail_path: str | None = Field(default=None, description="YouTube thumbnail path")
     youtube_url: str | None = None
     duration: float | None = None
     segments: list[VideoSegmentInfo] = []

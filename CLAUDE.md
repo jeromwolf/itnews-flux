@@ -163,9 +163,7 @@ itnews-flux/
 │   │   ├── crawler/              # 크롤러 ✅
 │   │   │   └── sources/          # 뉴스 소스
 │   │   │       ├── techcrunch.py      # TechCrunch ✅
-│   │   │       ├── theverge.py        # The Verge ✅
-│   │   │       ├── etnews.py          # 전자신문 🆕
-│   │   │       └── zdnet_kr.py        # 지디넷코리아 🆕
+│   │   │       └── theverge.py        # The Verge ✅
 │   │   ├── models.py             # 데이터 모델 ✅
 │   │   └── selector/             # 선택기 ✅
 │   │
@@ -202,8 +200,7 @@ itnews-flux/
 ├── requirements.txt               # Python 의존성
 │
 ├── test_crawler.py                # 크롤러 테스트
-├── test_korean_crawler.py         # 한국 뉴스 테스트 🆕
-├── test_translator.py             # 번역 테스트 🆕
+├── test_translator.py             # 번역 테스트 (영어→한글) 🆕
 ├── test_ai_services.py            # AI 서비스 테스트
 ├── test_video_production.py       # 영상 제작 테스트
 ├── test_pipeline.py               # 파이프라인 테스트
@@ -228,10 +225,8 @@ itnews-flux/
 ```bash
 [✓] BaseCrawler (추상 클래스)
 [✓] RSS Crawler
-[✓] TechCrunch (영어)
-[✓] The Verge (영어)
-[✓] ETNews (한국어) 🆕
-[✓] ZDNet Korea (한국어) 🆕
+[✓] TechCrunch (영어 → 한글 번역)
+[✓] The Verge (영어 → 한글 번역)
 [✓] 뉴스 선택 알고리즘 (점수 기반)
 ```
 
@@ -554,7 +549,7 @@ def call_api(url: str):
 4. [ ] AWS/GCP 클라우드 배포
 
 ### 🚀 새로운 기능 추가 (선택)
-1. [ ] 한국 뉴스 소스 확장 (조선비즈, 매일경제 IT)
+1. [ ] 영어 뉴스 소스 확장 (Ars Technica, Wired, MIT Tech Review)
 2. [ ] 실시간 자막 (SRT) 생성
 3. [ ] 다국어 지원 (일본어, 중국어)
 4. [✓] ~~배경음악 추가~~ (완료)

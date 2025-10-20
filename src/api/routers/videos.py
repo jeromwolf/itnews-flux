@@ -6,6 +6,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi.responses import StreamingResponse, FileResponse
+import os
 
 from ...automation import PipelineConfig, create_pipeline
 from ...automation.youtube_metadata import generate_youtube_metadata, format_metadata_for_display
@@ -54,6 +56,7 @@ async def create_video(request: VideoCreateRequest, background_tasks: Background
         "title": f"Tech News Digest - {datetime.now().strftime('%Y-%m-%d')}",
         "created_at": datetime.now(),
         "video_path": None,
+        "thumbnail_path": None,
         "youtube_url": None,
         "duration": None,
         "segments": [],
@@ -77,6 +80,7 @@ async def create_video(request: VideoCreateRequest, background_tasks: Background
         title=video_data["title"],
         created_at=video_data["created_at"],
         video_path=None,
+        thumbnail_path=None,
         youtube_url=None,
         duration=None,
         segments=[],
@@ -113,6 +117,7 @@ async def list_videos(limit: int = 10, status: VideoStatus | None = None) -> lis
             title=v["title"],
             created_at=v["created_at"],
             video_path=v["video_path"],
+            thumbnail_path=v.get("thumbnail_path"),
             youtube_url=v["youtube_url"],
             duration=v["duration"],
             segments=v["segments"],
@@ -145,6 +150,7 @@ async def get_video(video_id: str) -> VideoResponse:
         title=v["title"],
         created_at=v["created_at"],
         video_path=v["video_path"],
+        thumbnail_path=v.get("thumbnail_path"),
         youtube_url=v["youtube_url"],
         duration=v["duration"],
         segments=v["segments"],
@@ -181,6 +187,459 @@ async def delete_video(video_id: str) -> dict:
     logger.info(f"Deleted video {video_id}")
 
     return {"status": "success", "message": f"Video {video_id} deleted"}
+
+
+@router.get("/{video_id}/stream")
+async def stream_video(video_id: str):
+    """
+    Stream video file for preview.
+
+    Args:
+        video_id: Unique video ID
+
+    Returns:
+        Video file stream
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    if not video_data["video_path"]:
+        raise HTTPException(status_code=404, detail="Video file not available yet")
+
+    video_path = Path(video_data["video_path"])
+
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Video file not found on disk")
+
+    # Return video file with proper content type
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",
+        filename=f"{video_id}.mp4"
+    )
+
+
+@router.get("/{video_id}/thumbnail")
+async def get_thumbnail(video_id: str):
+    """
+    Get thumbnail image for video.
+
+    Args:
+        video_id: Unique video ID
+
+    Returns:
+        Thumbnail image file
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    if not video_data.get("thumbnail_path"):
+        raise HTTPException(status_code=404, detail="Thumbnail not available yet")
+
+    thumbnail_path = Path(video_data["thumbnail_path"])
+
+    if not thumbnail_path.exists():
+        raise HTTPException(status_code=404, detail="Thumbnail file not found on disk")
+
+    # Return thumbnail image with proper content type
+    return FileResponse(
+        path=str(thumbnail_path),
+        media_type="image/jpeg",
+        filename=f"{video_id}_thumbnail.jpg"
+    )
+
+
+@router.post("/{video_id}/generate-thumbnail")
+async def generate_thumbnail_for_video(video_id: str) -> dict:
+    """
+    Generate thumbnail for an existing video.
+
+    Args:
+        video_id: Unique video ID
+
+    Returns:
+        Success message with thumbnail path
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    try:
+        # Import thumbnail generator
+        from src.video.thumbnail_generator import ThumbnailGenerator
+        from pathlib import Path
+
+        # Try to get image from segments first
+        background_image = None
+
+        if video_data.get("segments"):
+            # Get first segment's image
+            first_segment = video_data["segments"][0]
+            if first_segment.get("image_path"):
+                bg_path = Path(first_segment["image_path"])
+                if bg_path.exists():
+                    background_image = bg_path
+
+        # If no image from segments, use any available image from output/images
+        if not background_image:
+            images_dir = Path("output/images")
+            available_images = list(images_dir.glob("*.png"))
+            if not available_images:
+                raise HTTPException(status_code=404, detail="No background images available")
+            # Use the most recent image
+            background_image = sorted(available_images, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+            logger.info(f"Using fallback image: {background_image}")
+
+        # Initialize thumbnail generator with config
+        config_file = Path("config/thumbnail_config.json")
+        generator = ThumbnailGenerator(config_file=config_file if config_file.exists() else None)
+
+        # Generate thumbnail
+        title = video_data.get("title", "Tech News Digest")
+        subtitle = f"Tech News • {video_data.get('created_at', '')[:10]}"
+
+        thumbnail_path = generator.generate(
+            title=title,
+            background_image_path=background_image,
+            subtitle=subtitle,
+            use_cache=False
+        )
+
+        # Update video data
+        video_data["thumbnail_path"] = str(thumbnail_path)
+
+        logger.info(f"Generated thumbnail for video {video_id}: {thumbnail_path}")
+
+        return {
+            "status": "success",
+            "message": "Thumbnail generated successfully",
+            "thumbnail_path": str(thumbnail_path)
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to generate thumbnail for video {video_id}")
+        raise HTTPException(status_code=500, detail=f"Thumbnail generation failed: {str(e)}")
+
+
+@router.put("/{video_id}/metadata")
+async def update_metadata(video_id: str, metadata: dict) -> dict:
+    """
+    Update video YouTube metadata.
+
+    Args:
+        video_id: Unique video ID
+        metadata: Updated metadata (title, description, tags)
+
+    Returns:
+        Updated video metadata
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    # Update metadata
+    if "youtube_metadata" not in video_data:
+        video_data["youtube_metadata"] = {}
+
+    if "title" in metadata:
+        video_data["youtube_metadata"]["title"] = metadata["title"]
+
+    if "description" in metadata:
+        video_data["youtube_metadata"]["description"] = metadata["description"]
+
+    if "tags" in metadata:
+        video_data["youtube_metadata"]["tags"] = metadata["tags"]
+
+    if "privacy_status" in metadata:
+        video_data["youtube_metadata"]["privacy_status"] = metadata["privacy_status"]
+
+    logger.info(f"Updated metadata for video {video_id}")
+
+    return {
+        "status": "success",
+        "message": "Metadata updated successfully",
+        "metadata": video_data["youtube_metadata"]
+    }
+
+
+@router.post("/{video_id}/upload-youtube")
+async def upload_to_youtube(video_id: str, background_tasks: BackgroundTasks) -> dict:
+    """
+    Manually upload video to YouTube.
+
+    This endpoint allows manual upload after video generation.
+    Useful for reviewing video before uploading.
+
+    Args:
+        video_id: Unique video ID
+        background_tasks: FastAPI background tasks
+
+    Returns:
+        Upload status
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    # Check if video exists
+    if not video_data.get("video_path"):
+        raise HTTPException(status_code=400, detail="Video file not available")
+
+    video_path = Path(video_data["video_path"])
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Video file not found on disk")
+
+    # Check if already uploaded
+    if video_data.get("youtube_url"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Video already uploaded to YouTube: {video_data['youtube_url']}"
+        )
+
+    # Start upload in background
+    background_tasks.add_task(_upload_to_youtube_task, video_id)
+
+    return {
+        "status": "started",
+        "message": "YouTube upload started in background",
+        "video_id": video_id
+    }
+
+
+async def _upload_to_youtube_task(video_id: str) -> None:
+    """
+    Background task to upload video to YouTube.
+
+    Args:
+        video_id: Video ID
+    """
+    video_data = _videos[video_id]
+
+    try:
+        video_data["status"] = VideoStatus.UPLOADING
+        logger.info(f"Starting YouTube upload for {video_id}")
+
+        # Get video info
+        video_path = Path(video_data["video_path"])
+        thumbnail_path = video_data.get("thumbnail_path")
+        if thumbnail_path:
+            thumbnail_path = Path(thumbnail_path)
+
+        # Create YouTube uploader
+        from ...automation.youtube import create_youtube_uploader
+
+        uploader = create_youtube_uploader()
+
+        # Authenticate
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, uploader.authenticate)
+
+        # Get metadata
+        youtube_metadata = video_data.get("youtube_metadata", {})
+        title = youtube_metadata.get("title", f"Tech News Digest - {datetime.now().strftime('%Y-%m-%d')}")
+        description = youtube_metadata.get("description", "Daily tech news digest")
+        tags = youtube_metadata.get("tags", ["tech news", "technology", "AI ON"])
+
+        # Upload video
+        upload_result = await loop.run_in_executor(
+            None,
+            uploader.upload_video,
+            video_path,
+            title,
+            description,
+            tags,
+        )
+
+        video_id_yt = upload_result["video_id"]
+        youtube_url = upload_result["video_url"]
+
+        logger.info(f"Video uploaded to YouTube: {youtube_url}")
+
+        # Upload thumbnail if available
+        if thumbnail_path and thumbnail_path.exists():
+            try:
+                logger.info("Uploading thumbnail...")
+                await loop.run_in_executor(
+                    None,
+                    uploader.set_thumbnail,
+                    video_id_yt,
+                    thumbnail_path,
+                )
+                logger.info("Thumbnail uploaded successfully")
+            except Exception as e:
+                logger.warning(f"Thumbnail upload failed: {e}")
+
+        # Update video data
+        video_data["status"] = VideoStatus.UPLOADED
+        video_data["youtube_url"] = youtube_url
+
+        logger.info(f"Video {video_id} successfully uploaded to YouTube")
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"YouTube upload failed for {video_id}: {error_msg}", exc_info=True)
+        video_data["status"] = VideoStatus.COMPLETED  # Revert to completed
+        video_data["error"] = f"YouTube upload failed: {error_msg}"
+
+
+@router.put("/{video_id}/edit")
+async def edit_video(video_id: str, edit_config: dict, background_tasks: BackgroundTasks) -> dict:
+    """
+    Edit video configuration and regenerate.
+
+    Args:
+        video_id: Unique video ID
+        edit_config: Edit configuration
+            - segment_ids: List of segment IDs in desired order
+            - show_intro: Include intro (bool)
+            - show_outro: Include outro (bool)
+
+    Returns:
+        Status message
+    """
+    if video_id not in _videos:
+        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+
+    video_data = _videos[video_id]
+
+    # Validate video can be edited
+    if video_data["status"] in [VideoStatus.GENERATING, VideoStatus.UPLOADING]:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot edit video while it's being generated or uploaded"
+        )
+
+    # Store edit configuration
+    video_data["edit_config"] = edit_config
+    video_data["status"] = VideoStatus.PENDING
+
+    logger.info(f"Regenerating video {video_id} with edit config: {edit_config}")
+
+    # Trigger regeneration in background
+    background_tasks.add_task(_regenerate_video, video_id)
+
+    return {
+        "status": "success",
+        "message": "Video regeneration started",
+        "video_id": video_id
+    }
+
+
+async def _regenerate_video(video_id: str) -> None:
+    """
+    Regenerate video with edit configuration.
+
+    Args:
+        video_id: Video ID to regenerate
+    """
+    video_data = _videos[video_id]
+
+    try:
+        video_data["status"] = VideoStatus.GENERATING
+        logger.info(f"Regenerating video {video_id}")
+
+        # Get edit config
+        edit_config = video_data.get("edit_config", {})
+        segment_ids = edit_config.get("segment_ids", [])
+        show_intro = edit_config.get("show_intro", True)
+        show_outro = edit_config.get("show_outro", True)
+
+        # Get selected news
+        news_list = []
+        for news_id in video_data["news_ids"]:
+            news = get_cached_news(news_id)
+            if news:
+                news_list.append(news)
+
+        if not news_list:
+            raise ValueError("No valid news articles found")
+
+        # Create pipeline config
+        config = PipelineConfig(
+            news_limit=len(news_list),
+            script_style=video_data["style"],
+            tts_voice=video_data["voice"],
+            enable_youtube_upload=False,  # Don't upload during edit
+        )
+
+        # Run pipeline
+        pipeline = create_pipeline(config)
+        loop = asyncio.get_event_loop()
+
+        # Generate content (segments)
+        segments = await loop.run_in_executor(None, pipeline.generate_content, news_list)
+        logger.info(f"Generated {len(segments)} segments")
+
+        # Reorder segments if specified
+        if segment_ids:
+            # Create segment map
+            segment_map = {s.segment_id: s for s in segments}
+            # Reorder based on segment_ids
+            reordered_segments = []
+            for seg_id in segment_ids:
+                if seg_id in segment_map:
+                    reordered_segments.append(segment_map[seg_id])
+            segments = reordered_segments
+
+        # Create video with edit config
+        from src.video.models import VideoProjectConfig
+        video_config = VideoProjectConfig(
+            show_intro=show_intro,
+            show_outro=show_outro,
+        )
+
+        # Create video project
+        from src.video.models import VideoProject
+        from datetime import datetime
+
+        project = VideoProject(
+            project_id=video_id,
+            title=video_data["title"],
+            config=video_config,
+            segments=segments,
+        )
+
+        # Compose video
+        from src.video.composition.video_composer import VideoComposer
+        composer = VideoComposer()
+        video_path = await loop.run_in_executor(
+            None,
+            composer.compose_project,
+            project,
+            None
+        )
+
+        logger.info(f"Video regenerated: {video_path}")
+
+        # Update video data
+        video_data["video_path"] = str(video_path)
+        video_data["segments"] = [
+            VideoSegmentInfo(
+                segment_id=s.segment_id,
+                title=s.title,
+                duration=s.duration or 0.0,
+                cost=s.cost or 0.0,
+            )
+            for s in segments
+        ]
+        video_data["duration"] = sum(s.duration or 0.0 for s in segments)
+        video_data["total_cost"] = sum(s.cost or 0.0 for s in segments)
+        video_data["status"] = VideoStatus.COMPLETED
+
+        logger.info(f"Video {video_id} regenerated successfully")
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error regenerating video {video_id}: {error_msg}", exc_info=True)
+        video_data["status"] = VideoStatus.FAILED
+        video_data["error"] = error_msg
 
 
 async def _generate_video(video_id: str) -> None:
@@ -227,6 +686,24 @@ async def _generate_video(video_id: str) -> None:
         video_path = await loop.run_in_executor(None, pipeline.create_video, segments)
         logger.info(f"Video created: {video_path}")
 
+        # Generate thumbnail
+        thumbnail_path = None
+        if pipeline.thumbnail_generator and segments:
+            try:
+                logger.info("Generating thumbnail...")
+                first_segment = segments[0]
+                thumbnail_path = await loop.run_in_executor(
+                    None,
+                    pipeline.thumbnail_generator.generate,
+                    first_segment.title,
+                    Path(first_segment.image.image_path),
+                    None,  # output_path
+                    f"Tech News • {datetime.now().strftime('%B %d, %Y')}",  # subtitle
+                )
+                logger.info(f"Thumbnail generated: {thumbnail_path}")
+            except Exception as e:
+                logger.warning(f"Thumbnail generation failed: {e}")
+
         # Generate YouTube metadata
         project = VideoProject(
             project_id=video_id,
@@ -247,12 +724,28 @@ async def _generate_video(video_id: str) -> None:
                 video_path,
                 [s.title for s in segments],
             )
+            video_id_yt = upload_result["video_id"]
             youtube_url = upload_result["video_url"]
             logger.info(f"Uploaded to YouTube: {youtube_url}")
+
+            # Upload thumbnail (if generated)
+            if thumbnail_path and thumbnail_path.exists() and pipeline.youtube_uploader:
+                try:
+                    logger.info("Uploading thumbnail to YouTube...")
+                    await loop.run_in_executor(
+                        None,
+                        pipeline.youtube_uploader.set_thumbnail,
+                        video_id_yt,
+                        thumbnail_path,
+                    )
+                    logger.info("Thumbnail uploaded to YouTube")
+                except Exception as e:
+                    logger.warning(f"Thumbnail upload to YouTube failed: {e}")
 
         # Update video data
         video_data["status"] = VideoStatus.UPLOADED if youtube_url else VideoStatus.COMPLETED
         video_data["video_path"] = str(video_path)
+        video_data["thumbnail_path"] = str(thumbnail_path) if thumbnail_path else None
         video_data["youtube_url"] = youtube_url
         video_data["duration"] = sum(s.duration for s in segments)
         video_data["segments"] = [

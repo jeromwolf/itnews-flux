@@ -1,0 +1,23 @@
+{
+  "brand_text": "AI ON",
+  "brand_font_size": 48,
+  "brand_color": "#FFFFFF",
+  "brand_position": "bottom-left",
+
+  "logo_path": "resources/logo.png",
+  "logo_position": "bottom-right",
+  "logo_size": 100,
+  "logo_margin": 30,
+
+  "text_box_color": "#1E40AF",
+  "text_box_opacity": 0.85,
+  "background_opacity": 0.5,
+
+  "title_font_size": 72,
+  "title_color": "#FFFFFF",
+  "subtitle_font_size": 36,
+  "subtitle_color": "#E0E0E0",
+
+  "width": 1280,
+  "height": 720
+}
