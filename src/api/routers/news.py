@@ -100,22 +100,20 @@ async def get_news(
 
         for news in news_list:
             try:
-                # Translate title
-                translated_title = translator.generate(
+                # Translate title (generate() returns string directly)
+                news.title = translator.generate(
                     text=news.title,
-                    source_lang="en",
-                    target_lang="ko"
+                    source_lang="English",
+                    target_lang="Korean"
                 )
-                news.title = translated_title.translated_text
 
                 # Translate summary
                 if news.summary:
-                    translated_summary = translator.generate(
+                    news.summary = translator.generate(
                         text=news.summary,
-                        source_lang="en",
-                        target_lang="ko"
+                        source_lang="English",
+                        target_lang="Korean"
                     )
-                    news.summary = translated_summary.translated_text
 
                 logger.debug(f"Translated: {news.title[:50]}...")
             except Exception as e:
