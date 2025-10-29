@@ -26,6 +26,67 @@
                 <input type="number" id="limit" class="form-input" value="10" min="1" max="50">
             </div>
             <button onclick="loadNews()" class="btn btn-primary">🔄 Refresh</button>
+            <button onclick="showManualNewsForm()" class="btn btn-success">➕ Add Manual News</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual News Form Modal -->
+<div id="manual-news-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+    <div style="max-width: 800px; margin: 2rem auto; padding: 2rem;">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">➕ Add Manual News</h2>
+                <button onclick="closeManualNewsForm()" class="btn btn-secondary">✕</button>
+            </div>
+            <div class="card-body">
+                <form id="manual-news-form" onsubmit="submitManualNews(event)">
+                    <div class="form-group">
+                        <label class="form-label">Title *</label>
+                        <input type="text" id="manual-title" class="form-input" required minlength="5" maxlength="200"
+                               placeholder="e.g., OpenAI Releases Revolutionary GPT-5 Model">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Summary * (20-1000 characters)</label>
+                        <textarea id="manual-summary" class="form-input" required minlength="20" maxlength="1000" rows="4"
+                                  placeholder="Brief summary of the news article (minimum 20 characters)..."></textarea>
+                        <small style="color: var(--text-secondary);">Character count: <span id="summary-count">0</span>/1000</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Full Content (optional, max 5000 characters)</label>
+                        <textarea id="manual-content" class="form-input" maxlength="5000" rows="6"
+                                  placeholder="Full article content (optional)..."></textarea>
+                        <small style="color: var(--text-secondary);">Character count: <span id="content-count">0</span>/5000</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Image URL (optional)</label>
+                        <input type="url" id="manual-image-url" class="form-input"
+                               placeholder="https://example.com/image.jpg">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select id="manual-category" class="form-select">
+                            <option value="ai_ml">AI/ML</option>
+                            <option value="software_cloud">Software/Cloud</option>
+                            <option value="startup_funding">Startup/Funding</option>
+                            <option value="security">Security</option>
+                            <option value="hardware">Hardware</option>
+                            <option value="mobile">Mobile</option>
+                            <option value="tech_general">Tech General</option>
+                            <option value="business">Business</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button type="button" onclick="closeManualNewsForm()" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-success">✓ Create News</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -184,7 +245,98 @@ async function createVideo() {
     }
 }
 
-// Load on page load
-document.addEventListener('DOMContentLoaded', loadNews);
+// Manual News Functions
+function showManualNewsForm() {
+    document.getElementById('manual-news-modal').style.display = 'block';
+    document.getElementById('manual-title').focus();
+}
+
+function closeManualNewsForm() {
+    document.getElementById('manual-news-modal').style.display = 'none';
+    document.getElementById('manual-news-form').reset();
+    document.getElementById('summary-count').textContent = '0';
+    document.getElementById('content-count').textContent = '0';
+}
+
+async function submitManualNews(event) {
+    event.preventDefault();
+
+    const title = document.getElementById('manual-title').value.trim();
+    const summary = document.getElementById('manual-summary').value.trim();
+    const content = document.getElementById('manual-content').value.trim();
+    const imageUrl = document.getElementById('manual-image-url').value.trim();
+    const category = document.getElementById('manual-category').value;
+
+    if (!title || !summary) {
+        utils.showToast('Title and Summary are required', 'error');
+        return;
+    }
+
+    if (summary.length < 20) {
+        utils.showToast('Summary must be at least 20 characters', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/news/manual', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title,
+                summary,
+                content: content || null,
+                image_url: imageUrl || null,
+                category
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to create manual news');
+        }
+
+        const news = await response.json();
+        utils.showToast(`Manual news created: ${news.title.substring(0, 50)}...`, 'success');
+
+        // Close modal
+        closeManualNewsForm();
+
+        // Reload news list
+        await loadNews();
+
+        // Auto-select the new news
+        selectedNews.add(news.id);
+        updateSelection();
+
+    } catch (error) {
+        console.error('Error creating manual news:', error);
+        utils.showToast('Error: ' + error.message, 'error');
+    }
+}
+
+// Character counters
+document.addEventListener('DOMContentLoaded', () => {
+    const summaryTextarea = document.getElementById('manual-summary');
+    const contentTextarea = document.getElementById('manual-content');
+    const summaryCount = document.getElementById('summary-count');
+    const contentCount = document.getElementById('content-count');
+
+    if (summaryTextarea) {
+        summaryTextarea.addEventListener('input', () => {
+            summaryCount.textContent = summaryTextarea.value.length;
+        });
+    }
+
+    if (contentTextarea) {
+        contentTextarea.addEventListener('input', () => {
+            contentCount.textContent = contentTextarea.value.length;
+        });
+    }
+
+    // Load news on page load
+    loadNews();
+});
 </script>
 {% endblock %}

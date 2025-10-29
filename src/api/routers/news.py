@@ -7,8 +7,8 @@ from fastapi import APIRouter, HTTPException
 from ...core.ai_services import create_translation_service
 from ...core.logging import get_logger
 from ...news.crawler import create_news_crawler
-from ...news.models import News
-from ..schemas.news import NewsListResponse, NewsResponse, NewsSelectionRequest
+from ...news.models import News, NewsCategory, NewsImportance, NewsSource
+from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/news", tags=["news"])
@@ -206,3 +206,85 @@ async def select_news(request: NewsSelectionRequest) -> dict:
 def get_cached_news(news_id: str) -> News | None:
     """Get news from cache (for internal use)."""
     return _news_cache.get(news_id)
+
+
+@router.post("/manual", response_model=NewsResponse)
+async def create_manual_news(request: ManualNewsRequest) -> NewsResponse:
+    """
+    Create a news article manually.
+
+    This endpoint allows users to directly input news content without crawling.
+    Perfect for adding custom stories, announcements, or specific topics.
+
+    Args:
+        request: Manual news creation request with title, summary, content, etc.
+
+    Returns:
+        Created news article with generated ID
+
+    Example:
+        POST /api/news/manual
+        {
+            "title": "OpenAI Releases GPT-5",
+            "summary": "Revolutionary AI model with enhanced capabilities...",
+            "content": "Full article content...",
+            "image_url": "https://example.com/image.jpg",
+            "category": "ai_ml"
+        }
+    """
+    logger.info(f"Creating manual news: {request.title[:50]}...")
+
+    # Parse category
+    try:
+        category = NewsCategory(request.category)
+    except ValueError:
+        logger.warning(f"Invalid category '{request.category}', using AI_ML")
+        category = NewsCategory.AI_ML
+
+    # Generate unique ID
+    import hashlib
+    news_id = f"manual-{hashlib.md5(request.title.encode()).hexdigest()[:12]}"
+
+    # Check if already exists
+    if news_id in _news_cache:
+        logger.warning(f"Manual news already exists: {news_id}")
+        raise HTTPException(
+            status_code=409,
+            detail=f"News with this title already exists (ID: {news_id})"
+        )
+
+    # Create News object
+    news = News(
+        title=request.title,
+        url=f"manual://{news_id}",  # Special URL for manual news
+        source=NewsSource.TECHCRUNCH,  # Use TechCrunch as placeholder
+        summary=request.summary,
+        content=request.content or request.summary,
+        published_at=datetime.now(),
+        category=category,
+        importance=NewsImportance.MAJOR,  # Manual news is important
+        author="Manual Input",
+        word_count=len((request.content or request.summary).split()),
+        reading_time=len((request.content or request.summary).split()) // 200,
+        image_url=request.image_url,
+    )
+
+    # Calculate score
+    news.calculate_score()
+
+    # Add to cache
+    _news_cache[news_id] = news
+    logger.info(f"Manual news created: {news_id} (score: {news.score:.2f})")
+
+    # Return response
+    return NewsResponse(
+        id=news_id,
+        title=news.title,
+        summary=news.summary,
+        url=str(news.url),
+        published_at=news.published_at,
+        source="manual",
+        category=news.category.value,
+        score=news.score,
+        image_url=request.image_url,
+    )
