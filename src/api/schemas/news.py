@@ -87,3 +87,18 @@ class NewsUpdateRequest(BaseModel):
                 "summary": "OpenAI has announced GPT-5, featuring enhanced reasoning capabilities and multimodal understanding that surpasses GPT-4."
             }
         }
+
+
+class URLNewsRequest(BaseModel):
+    """Request schema for creating news from URL."""
+
+    url: str = Field(..., description="URL of the article to crawl")
+    category: str = Field(default="ai_ml", description="News category")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "https://techcrunch.com/2025/10/29/openai-announces-gpt5/",
+                "category": "ai_ml"
+            }
+        }

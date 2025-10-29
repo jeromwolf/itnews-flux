@@ -9,7 +9,7 @@ from ...core.logging import get_logger
 from ...news.crawler import create_news_crawler
 from ...news.models import News, NewsCategory, NewsImportance, NewsSource, NewsCollection
 from ...news.selector import NewsSelector
-from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest, NewsUpdateRequest
+from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest, NewsUpdateRequest, URLNewsRequest
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/news", tags=["news"])
@@ -308,6 +308,97 @@ async def create_manual_news(request: ManualNewsRequest) -> NewsResponse:
         score=news.score,
         image_url=request.image_url,
     )
+
+
+@router.post("/from-url", response_model=NewsResponse)
+async def create_news_from_url(request: URLNewsRequest) -> NewsResponse:
+    """
+    Create a news article by crawling a URL.
+
+    This endpoint fetches and extracts content from any article URL.
+    Perfect for adding specific articles from any news source.
+
+    Args:
+        request: URL news creation request with URL and category
+
+    Returns:
+        Created news article with extracted content
+
+    Example:
+        POST /api/news/from-url
+        {
+            "url": "https://techcrunch.com/2025/10/29/openai-announces-gpt5/",
+            "category": "ai_ml"
+        }
+    """
+    logger.info(f"Creating news from URL: {request.url}")
+
+    # Import here to avoid circular dependency
+    from ...news.crawler.utils.url_extractor import URLExtractor
+
+    # Parse category
+    try:
+        category = NewsCategory(request.category)
+    except ValueError:
+        logger.warning(f"Invalid category '{request.category}', using AI_ML")
+        category = NewsCategory.AI_ML
+
+    # Extract content from URL
+    try:
+        extractor = URLExtractor()
+        extracted = extractor.extract(request.url)
+
+        # Generate unique ID from URL
+        import hashlib
+        url_hash = hashlib.md5(request.url.encode()).hexdigest()[:12]
+        news_id = f"url-{url_hash}"
+
+        # Check if already exists
+        if news_id in _news_cache:
+            logger.warning(f"URL news already exists: {news_id}")
+            raise HTTPException(
+                status_code=409,
+                detail=f"News from this URL already exists (ID: {news_id})"
+            )
+
+        # Create News object
+        news = News(
+            title=extracted["title"],
+            url=request.url,
+            source=NewsSource.TECHCRUNCH,  # Use TechCrunch as placeholder for URL-based news
+            summary=extracted["summary"],
+            content=extracted["content"],
+            published_at=extracted["published_at"],
+            category=category,
+            importance=NewsImportance.NORMAL,
+            author="URL Import",
+            word_count=len(extracted["content"].split()),
+            reading_time=len(extracted["content"].split()) // 200,
+        )
+
+        # Calculate score
+        news.calculate_score()
+
+        # Add to cache
+        _news_cache[news_id] = news
+        logger.info(f"URL news created: {news_id} (score: {news.score:.2f})")
+
+        # Return response
+        return NewsResponse(
+            id=news_id,
+            title=news.title,
+            summary=news.summary,
+            url=str(news.url),
+            published_at=news.published_at,
+            source="url",
+            category=news.category.value,
+            score=news.score,
+            image_url=None,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to create news from URL: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to extract content from URL: {str(e)}")
 
 
 @router.put("/{news_id}", response_model=NewsResponse)
