@@ -45,6 +45,98 @@ class NewsSelector:
         self.logger = get_logger(__name__)
 
     @log_execution_time(logger)
+    def select_ai_focused_news(
+        self,
+        news_collection: NewsCollection,
+        count: int = 5,
+        ai_ratio: float = 0.6,  # 60% AI news minimum
+    ) -> list[News]:
+        """
+        Select news articles with AI focus.
+
+        Args:
+            news_collection: Collection of news articles
+            count: Number of articles to select
+            ai_ratio: Minimum ratio of AI-related news (0.6 = 60%)
+
+        Returns:
+            List of selected news articles with AI prioritization
+
+        Algorithm:
+        1. Calculate scores for all articles
+        2. Separate AI-related and other news
+        3. Prioritize AI articles (60%+)
+        4. Ensure diversity (avoid category duplication)
+        5. Sort by score and return top N
+        """
+        self.logger.info(
+            f"Starting AI-focused news selection: {news_collection.total} articles → {count} selected (AI ratio: {ai_ratio:.0%})"
+        )
+
+        if news_collection.total == 0:
+            self.logger.warning("No articles to select from")
+            return []
+
+        # Calculate scores for all articles
+        for article in news_collection.articles:
+            article.calculate_score()
+
+        # Separate AI-related and other articles
+        ai_articles = [
+            a for a in news_collection.articles if a.category.is_ai_related
+        ]
+        other_tech_articles = [
+            a for a in news_collection.articles
+            if a.category.is_it_tech and not a.category.is_ai_related
+        ]
+        other_articles = [
+            a for a in news_collection.articles
+            if not a.category.is_it_tech
+        ]
+
+        self.logger.debug(
+            f"Article breakdown: AI={len(ai_articles)}, "
+            f"Other Tech={len(other_tech_articles)}, Other={len(other_articles)}"
+        )
+
+        # Calculate target counts
+        ai_count = max(int(count * ai_ratio), 1)  # At least 1 AI article
+        other_count = count - ai_count
+
+        # Adjust if not enough AI articles
+        if len(ai_articles) < ai_count:
+            self.logger.warning(
+                f"Not enough AI articles: {len(ai_articles)} < {ai_count}, adjusting..."
+            )
+            ai_count = len(ai_articles)
+            other_count = count - ai_count
+
+        self.logger.debug(
+            f"Target selection: AI={ai_count}, Other={other_count}"
+        )
+
+        # Select AI articles with diversity
+        selected_ai = self._select_diverse_articles(ai_articles, ai_count)
+
+        # Select other articles with diversity
+        remaining_pool = other_tech_articles + other_articles
+        selected_other = self._select_diverse_articles(remaining_pool, other_count)
+
+        # Combine
+        selected = selected_ai + selected_other
+
+        # Sort by score (highest first)
+        selected.sort(key=lambda x: x.score, reverse=True)
+
+        # Take top N
+        final_selection = selected[:count]
+
+        # Log selection results
+        self._log_ai_selection_results(final_selection)
+
+        return final_selection
+
+    @log_execution_time(logger)
     def select_top_news(
         self,
         news_collection: NewsCollection,
@@ -189,6 +281,46 @@ class NewsSelector:
             selected.extend(remaining[:needed])
 
         return selected
+
+    def _log_ai_selection_results(self, selected: list[News]) -> None:
+        """
+        Log AI-focused selection results for debugging.
+
+        Args:
+            selected: Selected articles
+        """
+        self.logger.info(f"Selected {len(selected)} articles (AI-focused)")
+
+        # AI vs Non-AI breakdown
+        ai_count = sum(1 for a in selected if a.category.is_ai_related)
+        ai_ratio = ai_count / len(selected) if selected else 0
+
+        self.logger.info(
+            f"AI breakdown: AI={ai_count} ({ai_ratio:.0%}), "
+            f"Other={len(selected) - ai_count} ({1-ai_ratio:.0%})"
+        )
+
+        # Category breakdown
+        category_counts: Counter = Counter()
+        for article in selected:
+            category_counts[article.category.value] += 1
+
+        self.logger.info(
+            "Category breakdown: "
+            + ", ".join(f"{cat}={count}" for cat, count in category_counts.most_common())
+        )
+
+        # Average score
+        avg_score = sum(a.score for a in selected) / len(selected) if selected else 0
+        self.logger.debug(f"Average selection score: {avg_score:.2f}")
+
+        # List selected articles (AI highlighted)
+        for i, article in enumerate(selected, 1):
+            ai_marker = "🤖" if article.category.is_ai_related else "📰"
+            self.logger.debug(
+                f"  [{i}] {ai_marker} [{article.score:.2f}] {article.category.value} | "
+                f"{article.importance.value} | {article.title[:60]}..."
+            )
 
     def _log_selection_results(self, selected: list[News]) -> None:
         """

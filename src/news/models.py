@@ -43,8 +43,8 @@ class NewsCategory(str, Enum):
     def weight(self) -> float:
         """Get category weight for news selection."""
         weights = {
-            # IT/Tech categories (higher priority)
-            self.AI_ML: 1.5,
+            # IT/Tech categories (AI-focused, higher priority)
+            self.AI_ML: 2.0,  # ⬆️ Increased from 1.5 to 2.0 (AI focus)
             self.SOFTWARE_CLOUD: 1.3,
             self.STARTUP_FUNDING: 1.2,
             self.SECURITY: 1.2,
@@ -56,13 +56,18 @@ class NewsCategory(str, Enum):
             self.ECONOMICS: 0.9,
             self.FINANCE: 0.9,
             # Other
-            self.BREAKING: 2.0,  # Highest priority
+            self.BREAKING: 2.5,  # ⬆️ Increased from 2.0 (breaking news priority)
             self.SCIENCE: 0.8,
             self.HEALTH: 0.7,
             self.WORLD: 0.6,
             self.UNKNOWN: 0.5,
         }
         return weights.get(self, 1.0)
+
+    @property
+    def is_ai_related(self) -> bool:
+        """Check if category is AI-related."""
+        return self in [self.AI_ML, self.SCIENCE]  # AI/ML and Science often cover AI
 
     @property
     def is_it_tech(self) -> bool:

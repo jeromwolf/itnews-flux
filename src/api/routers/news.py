@@ -7,7 +7,8 @@ from fastapi import APIRouter, HTTPException
 from ...core.ai_services import create_translation_service
 from ...core.logging import get_logger
 from ...news.crawler import create_news_crawler
-from ...news.models import News, NewsCategory, NewsImportance, NewsSource
+from ...news.models import News, NewsCategory, NewsImportance, NewsSource, NewsCollection
+from ...news.selector import NewsSelector
 from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest
 
 logger = get_logger(__name__)
@@ -36,6 +37,8 @@ async def get_news(
     limit: int = 10,
     force_refresh: bool = False,
     translate: bool = True,
+    ai_focused: bool = False,
+    ai_ratio: float = 0.6,
 ) -> NewsListResponse:
     """
     Fetch latest tech news from configured sources.
@@ -46,6 +49,8 @@ async def get_news(
         limit: Maximum number of news articles to return
         force_refresh: Force refresh cache
         translate: Translate English news to Korean (default: True)
+        ai_focused: Use AI-focused selection algorithm (default: False)
+        ai_ratio: Minimum AI news ratio when ai_focused=True (default: 0.6 = 60%)
 
     Returns:
         List of news articles with metadata
@@ -69,7 +74,7 @@ async def get_news(
         for source in source_list:
             try:
                 crawler = create_news_crawler(source)
-                news_collection = crawler.fetch_news(limit=limit, max_age_hours=max_age_hours)
+                news_collection = crawler.fetch_news(limit=limit * 2, max_age_hours=max_age_hours)  # Fetch more to allow selection
                 all_news.extend(news_collection.articles)
                 logger.info(f"Fetched {news_collection.total} articles from {source}")
             except ValueError as e:
@@ -79,11 +84,26 @@ async def get_news(
                 logger.error(f"Error crawling {source}: {e}")
                 continue
 
-        # Sort by score (descending)
-        all_news.sort(key=lambda x: x.score, reverse=True)
+        # Create NewsCollection for selection
+        combined_collection = NewsCollection(articles=all_news, total=len(all_news))
 
-        # Update cache
-        for news in all_news[:limit]:
+        # Apply AI-focused selection if requested
+        if ai_focused:
+            logger.info(f"Using AI-focused selection (ai_ratio={ai_ratio})")
+            selector = NewsSelector()
+            selected_news = selector.select_ai_focused_news(
+                combined_collection,
+                count=limit,
+                ai_ratio=ai_ratio
+            )
+        else:
+            # Sort by score (descending) and take top N
+            all_news.sort(key=lambda x: x.score, reverse=True)
+            selected_news = all_news[:limit]
+
+        # Update cache with selected news
+        _news_cache.clear()
+        for news in selected_news:
             # Generate unique ID
             news_id = f"{news.source.value}-{str(news.url).split('/')[-1][:20]}"
             _news_cache[news_id] = news
