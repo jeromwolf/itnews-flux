@@ -372,8 +372,22 @@ async function loadVideos(preserveState = false) {
 }
 
 function downloadVideo(videoPath) {
-    // In a real implementation, this would trigger a download
-    utils.showToast('Video path: ' + videoPath, 'info');
+    // Extract video ID from path (e.g., "output/videos/video_123.mp4" -> "video_123")
+    const filename = videoPath.split('/').pop();
+    const videoId = filename.replace('.mp4', '');
+
+    // Create download link
+    const downloadUrl = `/api/videos/${videoId}/download`;
+
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    utils.showToast('Downloading video...', 'success');
 }
 
 async function deleteVideo(videoId) {
