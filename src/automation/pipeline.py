@@ -240,13 +240,17 @@ class ContentPipeline:
                 source = "pool" if image.from_pool else "generated"
                 self.logger.info(f"  Image: {image.local_path} ({source}), ${image.total_cost:.4f}")
 
-                # Generate audio
+                # Generate audio with voice rotation
                 # 한글 번역이 있으면 한글로, 없으면 영어로 TTS 생성
+                # Option 1: 세그먼트별 목소리 교체 (다양성 증가)
+                voice_rotation = ["nova", "onyx", "shimmer", "fable", "echo"]
+                selected_voice = voice_rotation[(i - 1) % len(voice_rotation)]
+
                 tts_text = script.korean_translation if script.korean_translation else script.english_script
                 audio = self.tts_gen.generate(
-                    tts_text, voice=self.config.tts_voice
+                    tts_text, voice=selected_voice
                 )
-                self.logger.info(f"  Audio: {audio.duration:.1f}s, ${audio.total_cost:.4f} (language: {'Korean' if script.korean_translation else 'English'})")
+                self.logger.info(f"  Audio: {audio.duration:.1f}s, voice={selected_voice}, ${audio.total_cost:.4f} (language: {'Korean' if script.korean_translation else 'English'})")
 
                 # Create segment
                 segment = VideoSegment(
