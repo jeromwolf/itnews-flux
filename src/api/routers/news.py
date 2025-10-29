@@ -9,7 +9,7 @@ from ...core.logging import get_logger
 from ...news.crawler import create_news_crawler
 from ...news.models import News, NewsCategory, NewsImportance, NewsSource, NewsCollection
 from ...news.selector import NewsSelector
-from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest
+from ..schemas.news import ManualNewsRequest, NewsListResponse, NewsResponse, NewsSelectionRequest, NewsUpdateRequest
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/news", tags=["news"])
@@ -307,4 +307,76 @@ async def create_manual_news(request: ManualNewsRequest) -> NewsResponse:
         category=news.category.value,
         score=news.score,
         image_url=request.image_url,
+    )
+
+
+@router.put("/{news_id}", response_model=NewsResponse)
+async def update_news(news_id: str, request: NewsUpdateRequest) -> NewsResponse:
+    """
+    Update a news article's content.
+
+    This endpoint allows editing news summaries, titles, and other metadata.
+    Perfect for correcting crawled content or adjusting manual entries.
+
+    Args:
+        news_id: Unique news article ID
+        request: Update request with optional fields (only provided fields will be updated)
+
+    Returns:
+        Updated news article
+
+    Example:
+        PUT /api/news/techcrunch-abc123
+        {
+            "summary": "Updated summary with corrected information..."
+        }
+    """
+    logger.info(f"Updating news: {news_id}")
+
+    # Check if news exists
+    if news_id not in _news_cache:
+        raise HTTPException(status_code=404, detail=f"News article '{news_id}' not found")
+
+    news = _news_cache[news_id]
+
+    # Update fields if provided
+    if request.title is not None:
+        news.title = request.title
+        logger.debug(f"Updated title: {request.title[:50]}...")
+
+    if request.summary is not None:
+        news.summary = request.summary
+        logger.debug(f"Updated summary: {request.summary[:50]}...")
+
+    if request.content is not None:
+        news.content = request.content
+        logger.debug("Updated content")
+
+    if request.category is not None:
+        try:
+            news.category = NewsCategory(request.category)
+            logger.debug(f"Updated category: {request.category}")
+        except ValueError:
+            logger.warning(f"Invalid category '{request.category}', keeping original")
+
+    # Recalculate score and metadata
+    if request.summary or request.content:
+        news.word_count = len((news.content or news.summary).split())
+        news.reading_time = news.word_count // 200
+
+    news.calculate_score()
+
+    logger.info(f"News updated: {news_id} (score: {news.score:.2f})")
+
+    # Return updated news
+    return NewsResponse(
+        id=news_id,
+        title=news.title,
+        summary=news.summary,
+        url=str(news.url),
+        published_at=news.published_at,
+        source=news.source.value,
+        category=news.category.value,
+        score=news.score,
+        image_url=str(news.image_url) if news.image_url else None,
     )

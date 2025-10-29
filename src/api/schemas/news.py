@@ -70,3 +70,20 @@ class ManualNewsRequest(BaseModel):
                 "category": "ai_ml"
             }
         }
+
+
+class NewsUpdateRequest(BaseModel):
+    """Request schema for updating news article."""
+
+    title: str | None = Field(None, min_length=5, max_length=200, description="Updated title (optional)")
+    summary: str | None = Field(None, min_length=20, max_length=1000, description="Updated summary (optional)")
+    content: str | None = Field(None, max_length=5000, description="Updated content (optional)")
+    category: str | None = Field(None, description="Updated category (optional)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "OpenAI GPT-5: Revolutionary AI Model Released",
+                "summary": "OpenAI has announced GPT-5, featuring enhanced reasoning capabilities and multimodal understanding that surpasses GPT-4."
+            }
+        }
