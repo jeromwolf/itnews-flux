@@ -256,7 +256,7 @@ async def create_manual_news(request: ManualNewsRequest) -> NewsResponse:
     # Create News object
     news = News(
         title=request.title,
-        url=f"manual://{news_id}",  # Special URL for manual news
+        url=f"https://manual.tech-news-digest.com/{news_id}",  # Placeholder URL for manual news
         source=NewsSource.TECHCRUNCH,  # Use TechCrunch as placeholder
         summary=request.summary,
         content=request.content or request.summary,

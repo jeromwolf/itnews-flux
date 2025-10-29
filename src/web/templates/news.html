@@ -298,17 +298,47 @@ async function submitManualNews(event) {
         }
 
         const news = await response.json();
-        utils.showToast(`Manual news created: ${news.title.substring(0, 50)}...`, 'success');
+        utils.showToast(`✓ Manual news created: ${news.title.substring(0, 40)}...`, 'success');
 
         // Close modal
         closeManualNewsForm();
 
-        // Reload news list
-        await loadNews();
+        // Add new news to the top of the list (instead of full reload)
+        allNews.unshift(news);
+
+        // Create news item HTML
+        const newsHtml = `
+            <div class="news-item selected"
+                 onclick="toggleNews('${news.id}')"
+                 id="news-${news.id}">
+                ${news.image_url
+                    ? `<img src="${news.image_url}" alt="${news.title}" class="news-thumbnail" onerror="this.style.display='none'">`
+                    : '<div class="news-thumbnail" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">📰</div>'
+                }
+                <div class="news-content">
+                    <div class="news-title">${news.title}</div>
+                    <div class="news-meta">
+                        <span class="badge badge-info">${news.category}</span>
+                        <span>${news.source}</span>
+                        <span>Score: ${news.score.toFixed(1)}</span>
+                        <span>${utils.formatDate(news.published_at)}</span>
+                    </div>
+                    <div class="news-summary">${news.summary}</div>
+                </div>
+            </div>
+        `;
+
+        // Prepend to news list
+        const newsList = document.getElementById('news-list');
+        newsList.insertAdjacentHTML('afterbegin', newsHtml);
 
         // Auto-select the new news
         selectedNews.add(news.id);
-        updateSelection();
+        updateSelectedUI();
+
+        // Update count
+        const currentCount = parseInt(document.getElementById('news-count').textContent);
+        document.getElementById('news-count').textContent = `${currentCount + 1} articles`;
 
     } catch (error) {
         console.error('Error creating manual news:', error);
