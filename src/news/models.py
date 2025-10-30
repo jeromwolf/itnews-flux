@@ -8,7 +8,7 @@ Provides Pydantic models for:
 - News metadata
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -218,7 +218,7 @@ class News(BaseModel):
 
     # Internal
     crawled_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="When the article was crawled",
     )
     score: float = Field(0.0, ge=0.0, description="Selection score")
