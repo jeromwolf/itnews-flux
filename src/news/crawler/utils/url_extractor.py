@@ -8,7 +8,7 @@ Extracts title, summary, and content from any URL using:
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import requests
@@ -70,7 +70,7 @@ class URLExtractor:
                 "title": title,
                 "summary": summary or content[:500],  # Use content as fallback
                 "content": content,
-                "published_at": published_at or datetime.now(),
+                "published_at": published_at or datetime.now(timezone.utc),
                 "url": url,
             }
 
