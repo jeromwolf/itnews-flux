@@ -10,7 +10,7 @@ Provides abstract base class for all news crawlers with:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -217,7 +217,7 @@ class BaseCrawler(ABC):
 
         # Fallback to current time
         self.logger.warning(f"No date found for entry: {entry.get('title', 'Unknown')}")
-        return datetime.utcnow()
+        return datetime.now(timezone.utc)
 
     def _extract_text(self, html: str, max_length: int = 2000) -> str:
         """
@@ -290,7 +290,7 @@ class BaseCrawler(ABC):
 
             # Parse articles
             collection = NewsCollection(source=self.source)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             min_age = timedelta(hours=min_age_hours)
             max_age = timedelta(hours=max_age_hours)
 

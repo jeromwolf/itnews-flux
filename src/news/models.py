@@ -257,7 +257,7 @@ class News(BaseModel):
         score *= self.category.weight
 
         # Recency bonus (newer = better)
-        age_hours = (datetime.utcnow() - self.published_at).total_seconds() / 3600
+        age_hours = (datetime.now(timezone.utc) - self.published_at).total_seconds() / 3600
         if age_hours < 6:
             score *= 1.5  # Very recent
         elif age_hours < 24:
@@ -277,7 +277,7 @@ class News(BaseModel):
     @property
     def is_recent(self) -> bool:
         """Check if article is recent (within 24 hours)."""
-        age = datetime.utcnow() - self.published_at
+        age = datetime.now(timezone.utc) - self.published_at
         return age.total_seconds() < 86400  # 24 hours
 
     @property
