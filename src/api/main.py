@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ..core.logging import get_logger
-from .routers import analytics_router, news_router, schedule_router, videos_router
+from .routers import analytics_router, news_router, schedule_router, videos_router, youtube_player_router
 
 logger = get_logger(__name__)
 
@@ -47,6 +47,7 @@ app.include_router(news_router, prefix="/api")
 app.include_router(videos_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(youtube_player_router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -154,6 +155,12 @@ async def videos_page(request: Request):
 async def settings_page(request: Request):
     """Settings page."""
     return templates.TemplateResponse("settings.html", {"request": request})
+
+
+@app.get("/youtube", response_class=HTMLResponse)
+async def youtube_page(request: Request):
+    """YouTube player and downloader page."""
+    return templates.TemplateResponse("youtube.html", {"request": request})
 
 
 # Startup event

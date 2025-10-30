@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}YouTube Player - Tech News Digest{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">📺 YouTube Player & Downloader</h1>
+
+<!-- URL Input -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body">
+        <div class="form-group">
+            <label class="form-label">YouTube URL</label>
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" id="youtube-url" class="form-input"
+                       placeholder="https://www.youtube.com/watch?v=..."
+                       style="flex: 1;">
+                <button onclick="loadVideo()" class="btn btn-primary">▶️ Load Video</button>
+            </div>
+            <small style="color: var(--text-secondary);">
+                Paste a YouTube URL (https://youtube.com/watch?v=... or https://youtu.be/...)
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Video Player -->
+<div id="video-container" style="display: none;">
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2 class="card-title">Video Player</h2>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="downloadVideo('video')" class="btn btn-success">⬇️ Download Video</button>
+                <button onclick="downloadVideo('audio')" class="btn btn-primary">🎵 Download Audio</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- YouTube Embed -->
+            <div id="youtube-player" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+                <iframe id="youtube-iframe"
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Info -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Video Information</h2>
+        </div>
+        <div class="card-body">
+            <div id="video-info">
+                <p style="color: var(--text-secondary);">Loading video information...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Download Progress -->
+<div id="download-progress" style="display: none; margin-top: 2rem;">
+    <div class="card">
+        <div class="card-body">
+            <h3 style="margin-bottom: 1rem;">⏳ Downloading...</h3>
+            <div class="progress">
+                <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" style="margin-top: 0.5rem; color: var(--text-secondary);"></p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentVideoId = null;
+let currentVideoInfo = null;
+
+function extractVideoId(url) {
+    // Extract video ID from various YouTube URL formats
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+        /youtube\.com\/embed\/([^&\n?#]+)/,
+        /youtube\.com\/v\/([^&\n?#]+)/
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function loadVideo() {
+    const url = document.getElementById('youtube-url').value.trim();
+
+    if (!url) {
+        utils.showToast('Please enter a YouTube URL', 'error');
+        return;
+    }
+
+    const videoId = extractVideoId(url);
+
+    if (!videoId) {
+        utils.showToast('Invalid YouTube URL', 'error');
+        return;
+    }
+
+    currentVideoId = videoId;
+
+    // Update iframe src
+    const iframe = document.getElementById('youtube-iframe');
+    iframe.src = `https://www.youtube.com/embed/${videoId}`;
+
+    // Show video container
+    document.getElementById('video-container').style.display = 'block';
+
+    // Load video info
+    loadVideoInfo(videoId);
+
+    utils.showToast('Video loaded successfully', 'success');
+}
+
+async function loadVideoInfo(videoId) {
+    try {
+        const response = await fetch(`/api/youtube/info/${videoId}`);
+
+        if (!response.ok) {
+            throw new Error('Failed to load video information');
+        }
+
+        currentVideoInfo = await response.json();
+
+        // Display video info
+        const infoHtml = `
+            <div style="display: grid; gap: 1rem;">
+                <div>
+                    <strong>Title:</strong><br>
+                    <span>${currentVideoInfo.title || 'N/A'}</span>
+                </div>
+                <div>
+                    <strong>Channel:</strong><br>
+                    <span>${currentVideoInfo.channel || 'N/A'}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div>
+                        <strong>Duration:</strong><br>
+                        <span>${currentVideoInfo.duration || 'N/A'}</span>
+                    </div>
+                    <div>
+                        <strong>Views:</strong><br>
+                        <span>${currentVideoInfo.views ? currentVideoInfo.views.toLocaleString() : 'N/A'}</span>
+                    </div>
+                    <div>
+                        <strong>Upload Date:</strong><br>
+                        <span>${currentVideoInfo.upload_date || 'N/A'}</span>
+                    </div>
+                </div>
+                <div>
+                    <strong>Video ID:</strong><br>
+                    <code>${videoId}</code>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('video-info').innerHTML = infoHtml;
+
+    } catch (error) {
+        console.error('Error loading video info:', error);
+        document.getElementById('video-info').innerHTML = `
+            <p style="color: var(--danger-color);">
+                Failed to load video information. You can still play and download the video.
+            </p>
+        `;
+    }
+}
+
+async function downloadVideo(type) {
+    if (!currentVideoId) {
+        utils.showToast('Please load a video first', 'error');
+        return;
+    }
+
+    const progressDiv = document.getElementById('download-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = 'Preparing download...';
+
+    try {
+        const response = await fetch(`/api/youtube/download/${currentVideoId}?type=${type}`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Download failed');
+        }
+
+        // Get download URL from response
+        const result = await response.json();
+
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Download complete! Opening file...';
+
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = result.download_url;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => {
+            progressDiv.style.display = 'none';
+        }, 2000);
+
+        utils.showToast(`${type === 'video' ? 'Video' : 'Audio'} downloaded successfully`, 'success');
+
+    } catch (error) {
+        console.error('Download error:', error);
+        progressDiv.style.display = 'none';
+        utils.showToast('Download failed: ' + error.message, 'error');
+    }
+}
+
+// Auto-load if URL in query parameter
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const url = urlParams.get('url');
+
+    if (url) {
+        document.getElementById('youtube-url').value = url;
+        loadVideo();
+    }
+});
+
+// Enter key support
+document.getElementById('youtube-url').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        loadVideo();
+    }
+});
+</script>
+{% endblock %}
