@@ -223,12 +223,13 @@ class ContentPipeline:
                 self.logger.info(f"[{i}/{len(news_list)}] Processing: {news.title[:50]}...")
 
                 # Generate script
-                # 첫 번째 뉴스에만 인사말 포함 (is_first_segment 플래그 전달)
+                # 첫 번째 뉴스에만 오프닝 멘트, 마지막 뉴스에만 클로징 멘트 포함
                 script = self.script_gen.generate(
                     news,
                     style=self.config.script_style,
                     target_duration=self.config.segment_duration,
-                    is_first_segment=(i == 1),  # 첫 번째 세그먼트인지 표시
+                    is_first_segment=(i == 1),  # 첫 번째 세그먼트 (오프닝)
+                    is_last_segment=(i == len(news_list)),  # 마지막 세그먼트 (클로징)
                 )
                 self.logger.info(f"  Script: {script.word_count} words, ${script.total_cost:.4f}")
 

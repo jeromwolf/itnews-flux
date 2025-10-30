@@ -1,6 +1,7 @@
 """YouTube player and downloader API endpoints."""
 
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -107,10 +108,13 @@ async def download_video(video_id: str, type: str = "video") -> dict:
 
             logger.info(f"Downloaded: {filename}")
 
+            # URL encode filename for special characters like #
+            encoded_filename = quote(Path(filename).name)
+
             return {
                 "status": "success",
                 "filename": Path(filename).name,
-                "download_url": f"/api/youtube/file/{Path(filename).name}",
+                "download_url": f"/api/youtube/file/{encoded_filename}",
                 "type": type,
             }
 
@@ -119,24 +123,26 @@ async def download_video(video_id: str, type: str = "video") -> dict:
         raise HTTPException(status_code=400, detail=f"Download failed: {str(e)}")
 
 
-@router.get("/file/{filename}")
+@router.get("/file/{filename:path}")
 async def get_downloaded_file(filename: str):
     """
     Serve downloaded file.
 
     Args:
-        filename: Downloaded file name
+        filename: Downloaded file name (URL encoded)
 
     Returns:
         File download response
     """
-    file_path = Path("output/youtube_downloads") / filename
+    # Decode URL-encoded filename
+    decoded_filename = unquote(filename)
+    file_path = Path("output/youtube_downloads") / decoded_filename
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(
         path=str(file_path),
-        filename=filename,
+        filename=decoded_filename,
         media_type='application/octet-stream'
     )

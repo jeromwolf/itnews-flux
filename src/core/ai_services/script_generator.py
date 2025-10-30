@@ -46,6 +46,7 @@ class ScriptGenerator(BaseAIService):
         target_duration: int = 60,  # 60 seconds per news
         include_vocabulary: bool = True,
         is_first_segment: bool = False,  # 첫 번째 세그먼트 여부
+        is_last_segment: bool = False,  # 마지막 세그먼트 여부
     ) -> GeneratedScript:
         """
         Generate news script from article.
@@ -56,6 +57,7 @@ class ScriptGenerator(BaseAIService):
             target_duration: Target duration in seconds
             include_vocabulary: Extract key vocabulary
             is_first_segment: Whether this is the first segment (includes greeting)
+            is_last_segment: Whether this is the last segment (includes closing)
 
         Returns:
             Generated script
@@ -79,7 +81,7 @@ class ScriptGenerator(BaseAIService):
             return GeneratedScript(**cached)
 
         # Build prompt
-        prompt = self._build_prompt(news, style, target_duration, include_vocabulary, is_first_segment)
+        prompt = self._build_prompt(news, style, target_duration, include_vocabulary, is_first_segment, is_last_segment)
 
         # Generate script
         try:
@@ -195,6 +197,7 @@ Style Guidelines:
         target_duration: int,
         include_vocabulary: bool,
         is_first_segment: bool = False,
+        is_last_segment: bool = False,
     ) -> str:
         """
         Build prompt for script generation.
@@ -205,6 +208,7 @@ Style Guidelines:
             target_duration: Target duration
             include_vocabulary: Include vocabulary
             is_first_segment: Whether this is the first segment
+            is_last_segment: Whether this is the last segment
 
         Returns:
             Prompt string
@@ -243,20 +247,49 @@ Return a JSON object with:
 Example structure for the script:
 """
 
-        # 첫 번째 세그먼트에만 인사말 추가
+        # 세그먼트별 멘트 구조
         if is_first_segment:
             prompt += """
-First segment greeting:
-"안녕하세요, 기술 애호가 여러분! (Good morning, tech enthusiasts!) Today we're looking at [topic]..."
+첫 번째 세그먼트 (오프닝 멘트 포함):
+"안녕하세요! AI ON, 톡톡입니다.
+오늘은 [날짜], [요일]이고요,
+오늘도 흥미로운 인공지능 소식들을 준비했습니다.
+바로 시작해볼까요?
 
-Include a warm greeting ONLY for the first news segment.
+첫 번째 소식입니다. [뉴스 내용]"
+
+IMPORTANT:
+- 순수 한글 스크립트 작성 (영어 학습용 아님)
+- 기술 용어는 필요시 영어 사용 (예: GPT-4, Transformer, API 등)
+- "AI ON, 톡톡" 브랜드명 정확히 사용
+"""
+        elif is_last_segment:
+            prompt += """
+마지막 세그먼트 (클로징 멘트 포함):
+"[뉴스 내용]
+
+오늘 준비한 AI 소식은 여기까지입니다.
+내일도 새로운 인공지능 뉴스로 찾아뵙겠습니다.
+좋은 하루 보내세요! AI ON, 톡톡이었습니다."
+
+IMPORTANT:
+- 순수 한글 스크립트 작성
+- 기술 용어는 필요시 영어 사용
+- 클로징 멘트 정확히 포함
 """
         else:
             prompt += """
-Subsequent segments (NO greeting):
-"Next up, [topic]. [Main content with context and explanation]. This development could mean [impact]. That's all for this story."
+중간 세그먼트 (전환 멘트):
+다음 4가지 중 하나를 자연스럽게 선택:
+1. "다음 소식입니다. [뉴스 내용]"
+2. "이어서 다음 뉴스 전해드리겠습니다. [뉴스 내용]"
+3. "계속해서, 이런 소식도 있습니다. [뉴스 내용]"
+4. "또 다른 AI 뉴스입니다. [뉴스 내용]"
 
-DO NOT include greetings like "Good morning" or "안녕하세요" for segments after the first one. Start directly with the news content.
+IMPORTANT:
+- 순수 한글 스크립트 작성
+- 기술 용어는 필요시 영어 사용
+- 인사말이나 클로징 멘트 없이 전환 멘트만 사용
 """
 
         return prompt
