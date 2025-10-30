@@ -9,6 +9,7 @@ Generates professional news anchor scripts with:
 """
 
 import json
+from datetime import datetime, timezone
 from typing import Optional
 
 from src.core.ai_services.base import BaseAIService, GenerationError
@@ -249,10 +250,18 @@ Example structure for the script:
 
         # 세그먼트별 멘트 구조
         if is_first_segment:
-            prompt += """
+            # 현재 날짜 정보 가져오기 (한국 시간 기준)
+            now = datetime.now(timezone.utc)
+            # 날짜 포맷: "10월 31일" 형식
+            date_str = f"{now.month}월 {now.day}일"
+            # 요일: 0=월요일, 6=일요일
+            weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+            weekday_str = weekday_names[now.weekday()]
+
+            prompt += f"""
 첫 번째 세그먼트 (오프닝 멘트 포함):
 "안녕하세요! AI ON, 톡톡입니다.
-오늘은 [날짜], [요일]이고요,
+오늘은 {date_str}, {weekday_str}이고요,
 오늘도 흥미로운 인공지능 소식들을 준비했습니다.
 바로 시작해볼까요?
 
@@ -262,6 +271,7 @@ IMPORTANT:
 - 순수 한글 스크립트 작성 (영어 학습용 아님)
 - 기술 용어는 필요시 영어 사용 (예: GPT-4, Transformer, API 등)
 - "AI ON, 톡톡" 브랜드명 정확히 사용
+- 날짜는 정확히 "{date_str}, {weekday_str}"으로 사용
 """
         elif is_last_segment:
             prompt += """
