@@ -213,7 +213,7 @@ class BaseCrawler(ABC):
         for field in date_fields:
             if hasattr(entry, field) and getattr(entry, field):
                 time_struct = getattr(entry, field)
-                return datetime(*time_struct[:6])
+                return datetime(*time_struct[:6], tzinfo=timezone.utc)
 
         # Fallback to current time
         self.logger.warning(f"No date found for entry: {entry.get('title', 'Unknown')}")
