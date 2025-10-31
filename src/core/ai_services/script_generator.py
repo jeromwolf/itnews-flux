@@ -222,7 +222,32 @@ Style Guidelines:
    - example: Example sentence using the word
 """
 
-        prompt = f"""Transform this tech news article into a {target_duration}-second news script.
+        # 세그먼트별 금지 사항을 먼저 명확히 설정
+        segment_restriction = ""
+        if is_first_segment:
+            segment_restriction = """
+⚠️ CRITICAL: This is the FIRST segment of a multi-segment video.
+- You MUST include the opening greeting: "안녕하세요! AI ON, 톡톡입니다."
+- Brand name "AI ON, 톡톡" is MANDATORY and cannot be omitted
+"""
+        elif is_last_segment:
+            segment_restriction = """
+⚠️ CRITICAL: This is the LAST segment of a multi-segment video.
+- You MUST include the closing: "좋은 하루 보내세요! AI ON, 톡톡이었습니다."
+- Brand name "AI ON, 톡톡" is MANDATORY and cannot be omitted
+"""
+        else:
+            segment_restriction = """
+🚫 CRITICAL: This is a MIDDLE segment of a multi-segment video.
+- DO NOT include ANY greeting like "안녕하세요"
+- DO NOT repeat "AI ON, 톡톡입니다" (only first segment has this)
+- DO NOT include closing remarks (only last segment has this)
+- ONLY use transition phrases like "다음 소식입니다" + news content
+"""
+
+        prompt = f"""{segment_restriction}
+
+Transform this tech news article into a {target_duration}-second news script.
 
 Article Information:
 - Title: {news.title}
