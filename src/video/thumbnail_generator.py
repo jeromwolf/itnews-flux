@@ -36,19 +36,21 @@ class ThumbnailConfig(BaseModel):
         0, ge=0, le=10, description="Background blur radius (0=no blur)"
     )
 
-    # Text box
-    text_box_color: str = Field("#1E40AF", description="Text box background color (hex)")
+    # Text box (news broadcast style - bottom 1/3)
+    text_box_color: str = Field("#000000", description="Text box background color (hex)")
     text_box_opacity: float = Field(
-        0.95, ge=0.0, le=1.0, description="Text box opacity"
+        0.85, ge=0.0, le=1.0, description="Text box opacity"
     )
-    text_box_padding: int = Field(40, description="Text box padding (pixels)")
-    text_box_margin: int = Field(60, description="Text box margin from edges (pixels)")
+    text_box_padding: int = Field(30, description="Text box padding (pixels)")
+    text_box_margin: int = Field(0, description="Text box margin from edges (pixels)")
+    text_box_position: str = Field("bottom", description="Text box position (center, bottom)")
 
-    # Title text
-    title_font_size: int = Field(72, description="Title font size")
+    # Title text (news style with highlight color)
+    title_font_size: int = Field(64, description="Title font size")
     title_color: str = Field("#FFFFFF", description="Title text color (hex)")
-    title_max_lines: int = Field(3, description="Maximum lines for title")
-    title_line_spacing: int = Field(10, description="Line spacing for title")
+    title_highlight_color: str = Field("#00FF00", description="Highlight text color (neon green)")
+    title_max_lines: int = Field(2, description="Maximum lines for title")
+    title_line_spacing: int = Field(8, description="Line spacing for title")
 
     # Subtitle text (optional)
     show_subtitle: bool = Field(True, description="Show subtitle (category/date)")
@@ -56,14 +58,22 @@ class ThumbnailConfig(BaseModel):
     subtitle_font_size: int = Field(36, description="Subtitle font size")
     subtitle_color: str = Field("#E0E0E0", description="Subtitle text color (hex)")
 
-    # Branding
+    # Branding (news style - top left)
     brand_text: str = Field("AI ON", description="Brand text (customizable)")
-    brand_font_size: int = Field(48, description="Brand text font size")
+    brand_font_size: int = Field(60, description="Brand text font size")
     brand_color: str = Field("#FFFFFF", description="Brand text color (hex)")
+    brand_background_color: str = Field("#0066FF", description="Brand background color (hex)")
     brand_position: str = Field(
-        "bottom-left", description="Brand position (bottom-left, bottom-right, top-left, top-right)"
+        "top-left", description="Brand position (bottom-left, bottom-right, top-left, top-right)"
     )
-    brand_margin: int = Field(30, description="Brand margin from edges (pixels)")
+    brand_margin: int = Field(20, description="Brand margin from edges (pixels)")
+
+    # Video duration (news style - bottom right)
+    show_duration: bool = Field(True, description="Show video duration")
+    duration_font_size: int = Field(36, description="Duration font size")
+    duration_color: str = Field("#FFFFFF", description="Duration text color")
+    duration_background_color: str = Field("#000000", description="Duration background color")
+    duration_opacity: float = Field(0.8, ge=0.0, le=1.0, description="Duration background opacity")
 
     # Logo (optional)
     logo_path: Optional[Path] = Field(None, description="Path to logo image")
@@ -146,6 +156,7 @@ class ThumbnailGenerator:
         background_image_path: Path,
         output_path: Optional[Path] = None,
         subtitle: Optional[str] = None,
+        duration_seconds: Optional[float] = None,
         use_cache: bool = True,
     ) -> Path:
         """
@@ -156,6 +167,7 @@ class ThumbnailGenerator:
             background_image_path: Path to background image (AI-generated)
             output_path: Output file path (optional, auto-generated if not provided)
             subtitle: Subtitle text (optional, e.g., category or date)
+            duration_seconds: Video duration in seconds (optional, shows duration badge)
             use_cache: Use cached thumbnail if available
 
         Returns:
@@ -187,6 +199,10 @@ class ThumbnailGenerator:
 
         # Draw branding
         self._draw_branding(background, draw)
+
+        # Draw duration (if provided and enabled)
+        if duration_seconds and self.config.show_duration:
+            self._draw_duration(background, draw, duration_seconds)
 
         # Draw logo (if configured)
         if self.config.logo_path and self.config.logo_path.exists():
@@ -346,9 +362,14 @@ class ThumbnailGenerator:
         text_box_height = total_text_height + 2 * self.config.text_box_padding
         text_box_width = self.config.width - 2 * self.config.text_box_margin
 
-        # Center position
+        # Position based on config (center or bottom)
         text_box_x = self.config.text_box_margin
-        text_box_y = (self.config.height - text_box_height) // 2
+        if self.config.text_box_position == "bottom":
+            # News broadcast style - bottom 1/3
+            text_box_y = self.config.height - text_box_height - self.config.text_box_margin
+        else:
+            # Original center position
+            text_box_y = (self.config.height - text_box_height) // 2
 
         # Draw text box (rounded rectangle with transparency)
         self._draw_rounded_rectangle(
@@ -409,7 +430,7 @@ class ThumbnailGenerator:
 
     def _draw_branding(self, img: Image.Image, draw: ImageDraw.ImageDraw) -> None:
         """
-        Draw branding text (e.g., 'AI ON').
+        Draw branding text (e.g., 'AI ON') with background box (news style).
 
         Args:
             img: Image to draw on
@@ -422,48 +443,110 @@ class ThumbnailGenerator:
             )
         except OSError:
             try:
-                # Fallback to macOS Arial
+                # Fallback to macOS Arial Bold
                 brand_font = ImageFont.truetype(
                     "/System/Library/Fonts/Supplemental/Arial Bold.ttf", self.config.brand_font_size
                 )
             except OSError:
                 brand_font = ImageFont.load_default()
 
-        # Calculate position
+        # Calculate text size
         bbox = draw.textbbox((0, 0), self.config.brand_text, font=brand_font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
-        if self.config.brand_position == "bottom-left":
-            x = self.config.brand_margin
-            y = self.config.height - text_height - self.config.brand_margin
-        elif self.config.brand_position == "bottom-right":
-            x = self.config.width - text_width - self.config.brand_margin
-            y = self.config.height - text_height - self.config.brand_margin
-        elif self.config.brand_position == "top-left":
-            x = self.config.brand_margin
-            y = self.config.brand_margin
-        else:  # top-right
-            x = self.config.width - text_width - self.config.brand_margin
-            y = self.config.brand_margin
+        # Add padding for background box
+        padding = 15
+        box_width = text_width + 2 * padding
+        box_height = text_height + 2 * padding
 
-        # Draw text with stroke
-        if self.config.text_stroke:
-            for offset_x in range(-2, 3):
-                for offset_y in range(-2, 3):
-                    if offset_x != 0 or offset_y != 0:
-                        draw.text(
-                            (x + offset_x, y + offset_y),
-                            self.config.brand_text,
-                            font=brand_font,
-                            fill=(0, 0, 0, 255),
-                        )
+        # Calculate position
+        if self.config.brand_position == "bottom-left":
+            box_x = self.config.brand_margin
+            box_y = self.config.height - box_height - self.config.brand_margin
+        elif self.config.brand_position == "bottom-right":
+            box_x = self.config.width - box_width - self.config.brand_margin
+            box_y = self.config.height - box_height - self.config.brand_margin
+        elif self.config.brand_position == "top-left":
+            box_x = self.config.brand_margin
+            box_y = self.config.brand_margin
+        else:  # top-right
+            box_x = self.config.width - box_width - self.config.brand_margin
+            box_y = self.config.brand_margin
+
+        # Draw background box (news broadcast style)
+        draw.rectangle(
+            [(box_x, box_y), (box_x + box_width, box_y + box_height)],
+            fill=self._hex_to_rgba(self.config.brand_background_color, 0.9),
+        )
+
+        # Draw text (centered in box)
+        text_x = box_x + padding
+        text_y = box_y + padding
 
         draw.text(
-            (x, y),
+            (text_x, text_y),
             self.config.brand_text,
             font=brand_font,
             fill=self._hex_to_rgba(self.config.brand_color, 1.0),
+        )
+
+    def _draw_duration(
+        self, img: Image.Image, draw: ImageDraw.ImageDraw, duration_seconds: float
+    ) -> None:
+        """
+        Draw video duration badge at bottom-right (news broadcast style).
+
+        Args:
+            img: Image to draw on
+            draw: ImageDraw context
+            duration_seconds: Video duration in seconds
+        """
+        # Format duration as MM:SS
+        minutes = int(duration_seconds // 60)
+        seconds = int(duration_seconds % 60)
+        duration_text = f"{minutes}:{seconds:02d}"
+
+        # Load font
+        try:
+            duration_font = ImageFont.truetype(
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+                self.config.duration_font_size,
+            )
+        except OSError:
+            try:
+                duration_font = ImageFont.truetype(
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                    self.config.duration_font_size,
+                )
+            except OSError:
+                duration_font = ImageFont.load_default()
+
+        # Calculate size
+        bbox = draw.textbbox((0, 0), duration_text, font=duration_font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
+        padding = 8
+        box_width = text_width + 2 * padding
+        box_height = text_height + 2 * padding
+
+        # Position at bottom-right
+        box_x = self.config.width - box_width - 20
+        box_y = self.config.height - box_height - 20
+
+        # Draw background
+        draw.rectangle(
+            [(box_x, box_y), (box_x + box_width, box_y + box_height)],
+            fill=self._hex_to_rgba(self.config.duration_background_color, 0.9),
+        )
+
+        # Draw text
+        draw.text(
+            (box_x + padding, box_y + padding),
+            duration_text,
+            font=duration_font,
+            fill=self._hex_to_rgba(self.config.duration_color, 1.0),
         )
 
     def _draw_logo(self, img: Image.Image) -> None:
