@@ -36,37 +36,37 @@ class ThumbnailConfig(BaseModel):
         0, ge=0, le=10, description="Background blur radius (0=no blur)"
     )
 
-    # Text box (news broadcast style - bottom 1/3)
+    # Text box (news broadcast style - bottom 1/3, eye-catching)
     text_box_color: str = Field("#000000", description="Text box background color (hex)")
     text_box_opacity: float = Field(
-        0.85, ge=0.0, le=1.0, description="Text box opacity"
+        0.92, ge=0.0, le=1.0, description="Text box opacity (higher for readability)"
     )
-    text_box_padding: int = Field(30, description="Text box padding (pixels)")
+    text_box_padding: int = Field(40, description="Text box padding (pixels) - larger for impact")
     text_box_margin: int = Field(0, description="Text box margin from edges (pixels)")
     text_box_position: str = Field("bottom", description="Text box position (center, bottom)")
 
-    # Title text (news style with highlight color)
-    title_font_size: int = Field(64, description="Title font size")
+    # Title text (news style with BOLD, larger for CTR)
+    title_font_size: int = Field(72, description="Title font size (larger for mobile)")
     title_color: str = Field("#FFFFFF", description="Title text color (hex)")
     title_highlight_color: str = Field("#00FF00", description="Highlight text color (neon green)")
     title_max_lines: int = Field(2, description="Maximum lines for title")
-    title_line_spacing: int = Field(8, description="Line spacing for title")
+    title_line_spacing: int = Field(12, description="Line spacing for title")
 
-    # Subtitle text (optional)
+    # Subtitle text (optional) - more prominent
     show_subtitle: bool = Field(True, description="Show subtitle (category/date)")
     subtitle_text: Optional[str] = Field(None, description="Subtitle text")
-    subtitle_font_size: int = Field(36, description="Subtitle font size")
-    subtitle_color: str = Field("#E0E0E0", description="Subtitle text color (hex)")
+    subtitle_font_size: int = Field(42, description="Subtitle font size (larger)")
+    subtitle_color: str = Field("#FFD700", description="Subtitle text color (gold for attention)")
 
-    # Branding (news style - top left)
-    brand_text: str = Field("AI ON", description="Brand text (customizable)")
-    brand_font_size: int = Field(60, description="Brand text font size")
+    # Branding (news style - top left with stronger presence)
+    brand_text: str = Field("AI ON 톡톡", description="Brand text (full name)")
+    brand_font_size: int = Field(72, description="Brand text font size (larger)")
     brand_color: str = Field("#FFFFFF", description="Brand text color (hex)")
-    brand_background_color: str = Field("#0066FF", description="Brand background color (hex)")
+    brand_background_color: str = Field("#FF3D00", description="Brand background color (vibrant red-orange)")
     brand_position: str = Field(
         "top-left", description="Brand position (bottom-left, bottom-right, top-left, top-right)"
     )
-    brand_margin: int = Field(20, description="Brand margin from edges (pixels)")
+    brand_margin: int = Field(25, description="Brand margin from edges (pixels)")
 
     # Video duration (news style - bottom right)
     show_duration: bool = Field(True, description="Show video duration")
