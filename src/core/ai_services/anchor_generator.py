@@ -13,7 +13,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from src.core.ai_services.image_generator import ImageGenerator, GeneratedImage
+from src.core.ai_services.image_generator import ImageGenerator, GeneratedImage, ImageStyle
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -30,23 +30,27 @@ class AnchorProfile(BaseModel):
     age: str = Field(default="late 20s", description="Age description")
     ethnicity: str = Field(default="Korean", description="Ethnicity")
     hairstyle: str = Field(
-        default="medium-length wavy hair with subtle highlights",
+        default="flowing wavy hair with warm orange-peachy highlights, animated style",
         description="Hairstyle (consistent)",
     )
-    face_shape: str = Field(default="oval face", description="Face shape")
-    eye_type: str = Field(default="bright expressive eyes", description="Eye type")
+    face_shape: str = Field(default="soft oval face with gentle features", description="Face shape")
+    eye_type: str = Field(default="large expressive eyes, anime-inspired", description="Eye type")
     facial_features: str = Field(
-        default="friendly smile, professional demeanor, approachable yet authoritative",
+        default="warm friendly smile, round glasses (optional), youthful and approachable",
         description="Facial characteristics",
+    )
+    style_aesthetic: str = Field(
+        default="3D character illustration, semi-realistic anime style, soft digital painting",
+        description="Art style",
     )
 
     # Personality & vibe
     personality: str = Field(
-        default="modern, tech-savvy, energetic yet professional",
+        default="futuristic, tech-enthusiast, friendly and relatable",
         description="Personality traits",
     )
     vibe: str = Field(
-        default="MZ generation tech journalist, startup culture, innovation-focused",
+        default="Gen Z tech creator, digital native, cozy futurism meets cyberpunk lite",
         description="Overall vibe",
     )
 
@@ -61,56 +65,56 @@ class DailyOutfit(BaseModel):
     color_scheme: str = Field(..., description="Overall color scheme")
 
 
-# 매일 다른 의상 조합 (7일 사이클)
+# 매일 다른 의상 조합 (7일 사이클) - 미래지향적 스타일
 OUTFIT_ROTATION = [
     DailyOutfit(
-        outfit="navy blue blazer with white turtleneck, minimalist silver necklace",
-        background="modern tech studio with blue LED panels and floating holographic displays",
-        expression="confident smile, welcoming gesture",
-        accessories="wireless earpiece, smartwatch",
-        color_scheme="blue and white, professional tech aesthetic",
+        outfit="white oversized hoodie with holographic tech patterns, casual comfort",
+        background="cozy futuristic room with soft neon lighting, floating digital screens, bokeh effect",
+        expression="warm welcoming smile, friendly wave",
+        accessories="round wireless earbuds, smart bracelet with glowing display",
+        color_scheme="white and soft blue glow, cozy tech aesthetic",
     ),
     DailyOutfit(
-        outfit="burgundy red suit jacket with black top, gold accent jewelry",
-        background="sleek newsroom with multiple screens showing tech headlines",
-        expression="focused and engaged, explaining complex tech",
-        accessories="tablet in hand, stylus",
-        color_scheme="red and black, bold and authoritative",
+        outfit="pastel gradient sweater (pink to purple), relaxed modern style",
+        background="dreamy digital workspace with particle effects and soft lights",
+        expression="excited and animated, explaining cool tech",
+        accessories="AR glasses perched on head, smartwatch",
+        color_scheme="pastel gradients, ethereal and friendly",
     ),
     DailyOutfit(
-        outfit="emerald green blazer with subtle tech-pattern scarf, modern cut",
-        background="futuristic AI lab with glowing servers and digital displays",
-        expression="excited about breaking news, animated",
-        accessories="AR glasses hanging on collar",
-        color_scheme="green and silver, innovation-focused",
+        outfit="mint green tech jacket with subtle circuit patterns, street style",
+        background="cyberpunk-lite cafe with neon signs and holographic menus",
+        expression="casual smile, pointing at floating UI element",
+        accessories="wireless earbuds, digital wristband",
+        color_scheme="mint green and warm orange accents, vibrant energy",
     ),
     DailyOutfit(
-        outfit="charcoal gray suit with electric blue shirt, contemporary style",
-        background="minimalist studio with city skyline and tech company buildings",
-        expression="serious professional demeanor, delivering important news",
-        accessories="wireless microphone pin",
-        color_scheme="gray and blue, corporate tech",
+        outfit="lavender oversized cardigan over white tee, cozy creator",
+        background="home studio setup with RGB lighting and floating widgets",
+        expression="friendly and approachable, like talking to a friend",
+        accessories="headphones around neck, phone with holographic display",
+        color_scheme="lavender and warm whites, comfort tech",
     ),
     DailyOutfit(
-        outfit="pastel pink blazer with white blouse, modern feminine power suit",
-        background="bright studio with soft lighting and tech-themed decorations",
-        expression="warm and approachable smile, friendly energy",
-        accessories="pearl earrings, smart ring",
-        color_scheme="pink and white, soft yet professional",
+        outfit="coral pink hoodie with tech brand logo, Gen Z style",
+        background="futuristic library with digital books floating, warm lighting",
+        expression="excited discovery expression, 'aha!' moment",
+        accessories="smart glasses, glowing earrings",
+        color_scheme="coral pink and soft gold, playful innovation",
     ),
     DailyOutfit(
-        outfit="black turtleneck with beige oversized blazer, startup CEO style",
-        background="industrial-chic studio with exposed tech, startup vibe",
-        expression="casual yet professional, explaining trends",
-        accessories="Apple Watch, minimalist jewelry",
-        color_scheme="black and beige, modern minimalist",
+        outfit="cream turtleneck with high-tech vest, minimal chic",
+        background="sleek minimalist space with floating holographic news feeds",
+        expression="calm and focused, explaining clearly",
+        accessories="minimal tech jewelry, smart ring glowing softly",
+        color_scheme="cream and silver, sophisticated simplicity",
     ),
     DailyOutfit(
-        outfit="bright cobalt blue dress with structured blazer, tech conference ready",
-        background="high-tech broadcasting studio with virtual reality displays",
-        expression="energetic presentation mode, engaging audience",
-        accessories="statement earrings, tech badge lanyard",
-        color_scheme="cobalt blue and silver, vibrant tech energy",
+        outfit="electric blue bomber jacket over graphic tee, streetwear tech",
+        background="urban rooftop with city lights and floating AR displays",
+        expression="energetic and dynamic, full of enthusiasm",
+        accessories="AR visor pushed up, multiple smart devices",
+        color_scheme="electric blue and neon accents, high energy future",
     ),
 ]
 
@@ -191,12 +195,25 @@ class AnchorImageGenerator:
         self.logger.info(f"Generating {scene_type} anchor image: {self.profile.name}")
         self.logger.debug(f"Outfit: {outfit.outfit}")
 
-        # Generate image
+        # Create a dummy News object for ImageGenerator compatibility
+        from src.news.models import News
+        from datetime import datetime, timezone
+
+        dummy_news = News(
+            title=f"{self.profile.name} Anchor - {scene_type}",
+            summary=f"News anchor image for {scene_type} scene",
+            content="",
+            url="https://example.com/anchor",
+            source="techcrunch",  # Use valid source enum
+            published_at=datetime.now(timezone.utc),
+        )
+
+        # Generate image using custom_prompt
         image = self.image_gen.generate(
-            prompt=prompt,
-            size="1792x1024",  # 16:9 landscape for video
+            news=dummy_news,
+            style=ImageStyle.NATURAL,  # More realistic for news anchor
             quality="hd",
-            style="natural",  # More realistic for news anchor
+            custom_prompt=prompt,
         )
 
         return image
@@ -255,11 +272,25 @@ Reference: Modern Korean tech YouTuber/anchor style, MZ generation appeal.
 
         self.logger.info(f"Generating thumbnail anchor: {self.profile.name}")
 
+        # Create a dummy News object for ImageGenerator compatibility
+        from src.news.models import News
+        from datetime import datetime, timezone
+
+        dummy_news = News(
+            title=f"{self.profile.name} Anchor - Thumbnail",
+            summary="News anchor thumbnail portrait",
+            content="",
+            url="https://example.com/anchor/thumbnail",
+            source="techcrunch",  # Use valid source enum
+            published_at=datetime.now(timezone.utc),
+        )
+
+        # Generate image using custom_prompt
         image = self.image_gen.generate(
-            prompt=prompt,
-            size="1024x1024",  # Square for thumbnail (will crop/compose)
+            news=dummy_news,
+            style=ImageStyle.NATURAL,  # More realistic for news anchor
             quality="hd",
-            style="natural",
+            custom_prompt=prompt,
         )
 
         return image
@@ -302,7 +333,7 @@ Reference: Modern Korean tech YouTuber/anchor style, MZ generation appeal.
         scene = scene_configs.get(scene_type, scene_configs["news"])
 
         prompt = f"""
-Professional Korean tech news anchor in modern broadcast studio.
+Futuristic Korean tech content creator character in cozy digital space.
 
 CHARACTER IDENTITY (CRITICAL - MUST BE EXACTLY THE SAME EVERY TIME):
 - Name: {self.profile.name_en} ({self.profile.name})
@@ -318,7 +349,7 @@ TODAY'S VARIATION (ONLY THESE CHANGE):
 - Outfit: {outfit.outfit}
 - Background: {outfit.background}
 - Expression: {outfit.expression}
-- Accessories: {outfit.accessories or 'no special accessories'}
+- Accessories: {outfit.accessories or 'minimal tech accessories'}
 - Color theme: {outfit.color_scheme}
 
 SCENE: {scene_type.upper()}
@@ -326,28 +357,37 @@ SCENE: {scene_type.upper()}
 - Camera: {scene['camera']}
 - Mood: {scene['mood']}
 
-TECHNICAL SPECIFICATIONS:
-- Photo-realistic quality, professional broadcast photography
-- Studio lighting: soft key light, subtle fill, rim light for depth
-- 4K quality, shallow depth of field
-- Modern Korean TV broadcast aesthetic
-- Warm professional color grading
-- Sharp focus on face, subtle background blur
+ART STYLE & TECHNICAL SPECIFICATIONS:
+- {self.profile.style_aesthetic}
+- 3D character illustration with soft lighting and dreamy atmosphere
+- Semi-realistic anime/webtoon style, modern digital art
+- Warm color palette with soft gradients and bokeh effects
+- Cinematic lighting: soft key light, gentle rim light, atmospheric glow
+- Sharp focus on character, dreamy blurred background with particles
+- Cozy futurism aesthetic - blend of technology and warmth
 
 STYLE REFERENCE:
-- Modern Korean tech YouTube anchors (삼프로TV, 슈카월드 style)
-- Professional yet approachable
-- MZ generation appeal
-- Tech startup culture vibe
+- Modern Korean digital artists (Loish, Zeronis style influence)
+- Genshin Impact / Honkai Star Rail character quality
+- Studio Ghibli warmth meets cyberpunk aesthetics
+- Artstation trending style, high-quality character design
+- Gen Z tech creator vibe, relatable and friendly
 
 CRITICAL CONSISTENCY RULES:
-1. SAME FACE structure and features every time
-2. SAME hairstyle (color, length, style)
-3. SAME personality and energy
-4. ONLY outfit, background, and accessories vary
-5. Always professional news anchor quality
+1. SAME FACE structure and features every time - this is crucial!
+2. SAME hairstyle (flowing wavy orange-peachy hair, animated style)
+3. SAME art style (3D illustration, semi-realistic)
+4. SAME character essence and personality
+5. ONLY outfit, background, and accessories vary
+6. Always maintain illustration/anime quality, NOT photo-realistic
 
-OUTPUT: 16:9 broadcast-quality image, ready for video production.
+IMPORTANT:
+- This is NOT a photograph - it's a character illustration
+- Soft, dreamy, and approachable aesthetic
+- Tech-forward but warm and friendly
+- Perfect for Gen Z audience appeal
+
+OUTPUT: 16:9 high-quality character illustration, ready for video production.
 """
 
         return prompt
@@ -356,25 +396,63 @@ OUTPUT: 16:9 broadcast-quality image, ready for video production.
 # Convenience function
 def generate_daily_anchor_images(
     date: Optional[datetime] = None,
+    use_consistent_image: bool = True,
 ) -> dict[str, GeneratedImage]:
     """
     Generate all anchor images needed for daily video.
 
     Args:
         date: Date for outfit selection (uses today if not provided)
+        use_consistent_image: If True, use same image for all scenes (default: True)
 
     Returns:
-        Dictionary with intro, news, outro anchor images
+        Dictionary with intro, news, outro, thumbnail anchor images
     """
-    generator = AnchorImageGenerator()
+    from pathlib import Path
 
-    images = {
-        "intro": generator.generate_anchor_image("intro", date=date),
-        "news": generator.generate_anchor_image("news", date=date),
-        "outro": generator.generate_anchor_image("outro", date=date),
-        "thumbnail": generator.generate_thumbnail_anchor(date=date),
-    }
+    if use_consistent_image:
+        # Use the same intro image for all scenes (character consistency)
+        logger.info("Using consistent anchor image for all scenes")
 
-    logger.info(f"Generated {len(images)} anchor images for daily video")
+        # Find the consistent anchor image
+        intro_path = Path("output/images/anchor_consistent_intro.png")
+
+        if not intro_path.exists():
+            logger.warning(f"Consistent image not found: {intro_path}")
+            logger.info("Generating new intro image...")
+            generator = AnchorImageGenerator()
+            intro_image = generator.generate_anchor_image("intro", date=date)
+        else:
+            # Create GeneratedImage object from existing file
+            intro_image = GeneratedImage(
+                local_path=str(intro_path),
+                url="https://localhost/anchor_consistent_intro.png",  # Dummy URL for reused image
+                prompt="Consistent anchor character (reused)",
+                size="1792x1024",
+                cost=0.0,  # No cost for reusing existing image
+            )
+
+        # Reuse same image for all scenes
+        images = {
+            "intro": intro_image,
+            "news": intro_image,
+            "outro": intro_image,
+            "thumbnail": intro_image,
+        }
+
+        logger.info(f"Using {intro_path} for all 4 scenes (100% character consistency)")
+    else:
+        # Generate different images for each scene (original behavior)
+        logger.info("Generating unique images for each scene")
+        generator = AnchorImageGenerator()
+
+        images = {
+            "intro": generator.generate_anchor_image("intro", date=date),
+            "news": generator.generate_anchor_image("news", date=date),
+            "outro": generator.generate_anchor_image("outro", date=date),
+            "thumbnail": generator.generate_thumbnail_anchor(date=date),
+        }
+
+        logger.info(f"Generated {len(images)} unique anchor images")
 
     return images
