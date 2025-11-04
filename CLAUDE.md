@@ -776,3 +776,138 @@ f2b1af6 fix: Use correct translate method name (generate)
 - **교훈**: macOS와 Linux 환경 차이를 항상 고려해야 함
 - **개선**: 폰트 경로를 환경별로 fallback 구조로 설계
 - **원칙**: 한 번에 테스트하지 말고, 코드 검증 후 최종 테스트만 수행 (비용 절감)
+
+---
+
+## 🎭 AI 앵커 캐릭터: 이서연 (Lee Seo-yeon)
+
+### 캐릭터 프로필 (2025-11-04 확정)
+
+**기본 정보**:
+- **이름**: 이서연 (Lee Seo-yeon)
+- **역할**: AI ON 톡톡 뉴스 앵커
+- **컨셉**: Cozy Futurism Tech Creator
+- **연령대**: Late 20s
+- **민족**: Korean
+
+**외모 특징** (DALL-E 3 프롬프트 기반):
+- **헤어스타일**: Flowing wavy hair with warm orange-peachy highlights
+- **얼굴**: Soft oval face with gentle features
+- **눈**: Large expressive eyes, anime-inspired
+- **악세서리**: Round glasses (optional)
+- **표정**: Warm friendly smile, youthful and approachable
+- **스타일**: 3D character illustration, semi-realistic anime style, soft digital painting
+
+**의상**:
+- **메인**: Pastel gradient sweater (soft pinks, peaches, lavenders)
+- **스타일**: Cozy futuristic aesthetic, Gen Z tech creator vibe
+- **배경**: Soft glowing tech elements (subtle, not overpowering)
+
+### 캐릭터 일관성 전략
+
+**현재 구현 (2025-11-04)**:
+- **방식**: Single "perfect" image reuse across all scenes
+- **파일**: `output/images/anchor_consistent_intro.png`
+- **사용처**: Intro, News, Outro, Thumbnail (모두 동일 이미지)
+- **장점**: 100% 얼굴 일관성, 비용 $0 (재사용)
+- **파일**: `src/core/ai_services/anchor_generator.py:397-443`
+
+**미래 발전 계획**:
+
+#### Phase 1: 제스처 및 표정 바리에이션 (추후 구현)
+- [ ] 기본 포즈: 정면, 좌측, 우측
+- [ ] 표정: 중립, 미소, 놀람, 진지
+- [ ] 제스처: 손 동작 (pointing, presenting, thinking)
+- [ ] 도구: ControlNet or Stable Diffusion with LoRA
+- [ ] 예상 비용: 초기 학습 $50-100, 이후 생성 $0.01/image
+
+#### Phase 2: 애니메이션 (미래 버전)
+- [ ] 기술: Runway Gen-2, Pika Labs, or D-ID
+- [ ] 구현:
+  - Lip-sync (TTS와 동기화)
+  - Head movement (자연스러운 고개 움직임)
+  - Blinking (눈 깜빡임)
+  - Gesture animation (손 동작 애니메이션)
+- [ ] 예상 비용: $0.05-0.10 per second of video
+- [ ] 파일럿 테스트 필요
+
+#### Phase 3: AI 음성 + 립싱크 (최종 목표)
+- [ ] 기술: ElevenLabs + D-ID or HeyGen
+- [ ] 구현:
+  - Custom voice model for 이서연
+  - Real-time lip-sync with Korean TTS
+  - Facial expression based on script emotion
+  - Full talking head video generation
+- [ ] 예상 비용: $0.10-0.20 per video
+- [ ] 테스트 필요: 한국어 발음 정확도
+
+### 캐릭터 보존 방법
+
+**중요 파일**:
+```bash
+# 마스터 이미지 (절대 삭제 금지!)
+output/images/anchor_consistent_intro.png  # 메인 캐릭터 이미지
+output/images/anchor_consistent_outro.png  # 아웃트로 버전 (동일 캐릭터)
+
+# 코드 파일
+src/core/ai_services/anchor_generator.py    # 캐릭터 생성 로직
+src/video/composition/video_composer.py     # Intro/Outro 통합 (lines 262-270, 394-402)
+```
+
+**DALL-E 3 프롬프트** (재생성 시 사용):
+```
+A young Korean woman with flowing wavy hair featuring warm orange-peachy highlights,
+wearing round glasses and a warm friendly smile. She has large expressive anime-inspired
+eyes and a soft oval face with gentle features. Her style is youthful and approachable,
+like a Gen Z tech creator. She's wearing a cozy pastel gradient sweater in soft pinks,
+peaches, and lavenders. The background features soft glowing tech elements in a cozy
+futuristic aesthetic. 3D character illustration style, semi-realistic anime,
+soft digital painting, warm lighting.
+```
+
+**버전 관리**:
+- Git에 마스터 이미지 커밋 완료
+- Google Drive 백업 권장
+- 재생성 시 동일 프롬프트 사용 필수
+
+### 향후 개선 로드맵
+
+**단기 (1-3개월)**:
+- [ ] 더 많은 포즈 생성 (5-10개)
+- [ ] 감정 표현 바리에이션 (happy, surprised, thoughtful, serious)
+- [ ] ControlNet 기반 일관성 유지 테스트
+
+**중기 (3-6개월)**:
+- [ ] 짧은 애니메이션 테스트 (3-5초)
+- [ ] Lip-sync 파일럿 (Intro/Outro만)
+- [ ] 비용 대비 효과 분석
+
+**장기 (6-12개월)**:
+- [ ] Full talking head video (전체 뉴스 진행)
+- [ ] AI 음성 모델 커스터마이징
+- [ ] 실시간 생성 파이프라인 구축
+
+### 기술 스택 후보
+
+**이미지 일관성**:
+- ControlNet (OpenPose, Canny Edge)
+- Stable Diffusion LoRA fine-tuning
+- IPAdapter (face consistency)
+
+**애니메이션**:
+- Runway Gen-2 (video generation)
+- Pika Labs (AI video)
+- D-ID (talking head)
+- HeyGen (professional talking avatars)
+
+**음성 + 립싱크**:
+- ElevenLabs (voice cloning)
+- Azure TTS (Korean support)
+- Wav2Lip (lip-sync)
+- SadTalker (talking head from single image)
+
+---
+
+**마지막 업데이트**: 2025-11-04 (AI 앵커 캐릭터 통합 완료)
+**다음 리뷰**: 캐릭터 애니메이션 구현 시 또는 6개월 후
+**현재 상태**: Phase 8 완료 (AI 앵커 + 웹 대시보드 수정) - 프로덕션 사용 가능

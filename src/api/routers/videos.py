@@ -101,7 +101,44 @@ async def list_videos(limit: int = 10, status: VideoStatus | None = None) -> lis
     Returns:
         List of videos
     """
-    videos = list(_videos.values())
+    # Merge in-memory videos with videos from disk
+    all_videos = {}
+
+    # First, load videos from disk
+    videos_dir = Path("output/videos")
+    if videos_dir.exists():
+        for video_file in sorted(videos_dir.glob("tech_news_*.mp4"), reverse=True):
+            # Extract video ID from filename (e.g., tech_news_20251103_235037.mp4)
+            video_id = video_file.stem
+
+            # Skip if already in memory
+            if video_id in _videos:
+                continue
+
+            # Get file stats
+            stat = video_file.stat()
+            created_at = datetime.fromtimestamp(stat.st_mtime)
+
+            # Create video entry from disk file
+            all_videos[video_id] = {
+                "id": video_id,
+                "status": VideoStatus.COMPLETED,
+                "title": f"Tech News - {created_at.strftime('%Y-%m-%d %H:%M')}",
+                "created_at": created_at,
+                "video_path": str(video_file),
+                "thumbnail_path": None,
+                "youtube_url": None,
+                "duration": None,
+                "segments": [],
+                "total_cost": 0.0,
+                "error": None,
+                "youtube_metadata": None,
+            }
+
+    # Then, add in-memory videos (these override disk videos)
+    all_videos.update(_videos)
+
+    videos = list(all_videos.values())
 
     # Filter by status
     if status:
@@ -140,24 +177,46 @@ async def get_video(video_id: str) -> VideoResponse:
     Returns:
         Video details
     """
-    if video_id not in _videos:
-        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
+    # First check in-memory videos
+    if video_id in _videos:
+        v = _videos[video_id]
+        return VideoResponse(
+            id=v["id"],
+            status=v["status"],
+            title=v["title"],
+            created_at=v["created_at"],
+            video_path=v["video_path"],
+            thumbnail_path=v.get("thumbnail_path"),
+            youtube_url=v["youtube_url"],
+            duration=v["duration"],
+            segments=v["segments"],
+            total_cost=v["total_cost"],
+            error=v["error"],
+            youtube_metadata=v.get("youtube_metadata"),
+        )
 
-    v = _videos[video_id]
-    return VideoResponse(
-        id=v["id"],
-        status=v["status"],
-        title=v["title"],
-        created_at=v["created_at"],
-        video_path=v["video_path"],
-        thumbnail_path=v.get("thumbnail_path"),
-        youtube_url=v["youtube_url"],
-        duration=v["duration"],
-        segments=v["segments"],
-        total_cost=v["total_cost"],
-        error=v["error"],
-        youtube_metadata=v.get("youtube_metadata"),
-    )
+    # Then check disk
+    video_file = Path(f"output/videos/{video_id}.mp4")
+    if video_file.exists():
+        stat = video_file.stat()
+        created_at = datetime.fromtimestamp(stat.st_mtime)
+
+        return VideoResponse(
+            id=video_id,
+            status=VideoStatus.COMPLETED,
+            title=f"Tech News - {created_at.strftime('%Y-%m-%d %H:%M')}",
+            created_at=created_at,
+            video_path=str(video_file),
+            thumbnail_path=None,
+            youtube_url=None,
+            duration=None,
+            segments=[],
+            total_cost=0.0,
+            error=None,
+            youtube_metadata=None,
+        )
+
+    raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
 
 
 @router.delete("/{video_id}")
@@ -200,15 +259,15 @@ async def stream_video(video_id: str):
     Returns:
         Video file stream
     """
-    if video_id not in _videos:
-        raise HTTPException(status_code=404, detail=f"Video '{video_id}' not found")
-
-    video_data = _videos[video_id]
-
-    if not video_data["video_path"]:
-        raise HTTPException(status_code=404, detail="Video file not available yet")
-
-    video_path = Path(video_data["video_path"])
+    # First check in-memory videos
+    if video_id in _videos:
+        video_data = _videos[video_id]
+        if not video_data["video_path"]:
+            raise HTTPException(status_code=404, detail="Video file not available yet")
+        video_path = Path(video_data["video_path"])
+    else:
+        # Then check disk
+        video_path = Path(f"output/videos/{video_id}.mp4")
 
     if not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file not found on disk")

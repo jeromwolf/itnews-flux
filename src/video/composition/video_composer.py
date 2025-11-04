@@ -259,11 +259,15 @@ class VideoComposer:
             intro_bg = ImageClip(str(config.intro_image_path))
             self.logger.info(f"Using custom intro image: {config.intro_image_path}")
         else:
-            # Try AI ON intro
-            ai_on_intro = Path("resources/ai_on_intro.png")
-            if ai_on_intro.exists():
-                intro_bg = ImageClip(str(ai_on_intro))
-                self.logger.info(f"Using AI ON intro image: {ai_on_intro}")
+            # Try anchor character intro first
+            anchor_intro = Path("output/images/anchor_consistent_intro.png")
+            if anchor_intro.exists():
+                intro_bg = ImageClip(str(anchor_intro))
+                self.logger.info(f"Using AI anchor character intro: {anchor_intro}")
+            # Fallback to AI ON intro
+            elif Path("resources/ai_on_intro.png").exists():
+                intro_bg = ImageClip(str(Path("resources/ai_on_intro.png")))
+                self.logger.info(f"Using AI ON intro image: resources/ai_on_intro.png")
             else:
                 # Try old default
                 default_intro = Path("resources/intro_background.png")
@@ -387,11 +391,15 @@ class VideoComposer:
             outro_bg = ImageClip(str(config.outro_image_path))
             self.logger.info(f"Using custom outro image: {config.outro_image_path}")
         else:
-            # Try AI ON intro (same as intro for consistency)
-            ai_on_intro = Path("resources/ai_on_intro.png")
-            if ai_on_intro.exists():
-                outro_bg = ImageClip(str(ai_on_intro))
-                self.logger.info(f"Using AI ON intro image for outro: {ai_on_intro}")
+            # Try anchor character outro first
+            anchor_outro = Path("output/images/anchor_consistent_outro.png")
+            if anchor_outro.exists():
+                outro_bg = ImageClip(str(anchor_outro))
+                self.logger.info(f"Using AI anchor character outro: {anchor_outro}")
+            # Fallback to AI ON intro (same as intro for consistency)
+            elif Path("resources/ai_on_intro.png").exists():
+                outro_bg = ImageClip(str(Path("resources/ai_on_intro.png")))
+                self.logger.info(f"Using AI ON intro image for outro: resources/ai_on_intro.png")
             else:
                 # Try old default
                 default_outro = Path("resources/outro_background.png")
